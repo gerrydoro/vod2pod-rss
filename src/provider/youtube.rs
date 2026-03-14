@@ -481,14 +481,38 @@ async fn get_youtube_stream_url(url: &Url) -> eyre::Result<Url> {
     debug!("getting stream_url for yt video: {}", url);
     let extra_args: Vec<String> =
         serde_json::from_str(conf().get(ConfName::YoutubeYtDlpExtraArgs)?.as_str()).map_err(|_| eyre!(r#"failed to parse YOUTUBE_YT_DLP_GET_URL_EXTRA_ARGS allowed syntax is ["arg1#", "arg2", "arg3", ...]"#))?;
-    let mut command = tokio::process::Command::new("yt-dlp");
-    command
-        .arg("-f")
-        .arg("bestaudio")
-        .arg("--get-url")
-        .arg(url.as_str());
+    
+    // Check if best audio quality mode is enabled
+    let use_best_quality = conf().get(ConfName::UseBestAudioQuality)?.to_lowercase() == "true";
+    
+    // Get the audio codec for format selection
+    let audio_codec = conf().get(ConfName::AudioCodec).unwrap_or_else(|_| "MP3".to_string());
+    let codec_ext = match audio_codec.as_str() {
+        "OPUS" => "webm", // OPUS is typically in webm containers on YouTube
+        "OGG_VORBIS" => "webm",
+        _ => "m4a", // Default to m4a for best quality (AAC)
+    };
+    
+    let mut command = tokio::process::Command::new("/nix/store/5zmsxppz03h1b2x2563jwqv60hfjsbjr-yt-dlp-2026.03.03/bin/yt-dlp");
+    
+    if use_best_quality {
+        // Use best audio format with specific container
+        // Note: We use webm for OPUS/OGG since that's what YouTube uses
+        command
+            .arg("-f")
+            .arg(format!("ba[ext={}]", codec_ext))
+            .arg("--get-url")
+            .arg(url.as_str());
+    } else {
+        // Use bestaudio (default behavior)
+        command
+            .arg("-f")
+            .arg("bestaudio")
+            .arg("--get-url")
+            .arg(url.as_str());
+    }
 
-    for arg in extra_args {
+    for arg in &extra_args {
         command.arg(arg);
     }
 
@@ -497,16 +521,41 @@ async fn get_youtube_stream_url(url: &Url) -> eyre::Result<Url> {
     match output {
         Ok(x) => {
             let raw_url = std::str::from_utf8(&x.stdout).unwrap_or_default();
-            match Url::from_str(raw_url) {
-                Ok(url) => Ok(url),
-                Err(e) => {
-                    warn!(
-                        "error while parsing stream url using yt-dlp:\nerror: {}\nyt-dlp stdout: {}\nyt-dlp stderr: {}",
-                        e.to_string(),
-                        raw_url,
-                        std::str::from_utf8(&x.stderr).unwrap_or_default()
-                    );
-                    Err(eyre::eyre!(e))
+            let stderr = std::str::from_utf8(&x.stderr).unwrap_or_default();
+
+            // If format selection failed, fall back to bestaudio
+            if stderr.contains("Requested format is not available") {
+                warn!("Requested format not available, falling back to bestaudio");
+                let mut fallback_command = tokio::process::Command::new("/nix/store/5zmsxppz03h1b2x2563jwqv60hfjsbjr-yt-dlp-2026.03.03/bin/yt-dlp");
+                fallback_command
+                    .arg("-f")
+                    .arg("bestaudio")
+                    .arg("--get-url")
+                    .arg(url.as_str());
+
+                for arg in &extra_args {
+                    fallback_command.arg(arg);
+                }
+                
+                let fallback_output = fallback_command.output().await?;
+                let fallback_url = std::str::from_utf8(&fallback_output.stdout).unwrap_or_default();
+                
+                match Url::from_str(fallback_url.trim()) {
+                    Ok(url) => Ok(url),
+                    Err(e) => Err(eyre::eyre!("Failed to parse fallback URL: {}", e)),
+                }
+            } else {
+                match Url::from_str(raw_url.trim()) {
+                    Ok(url) => Ok(url),
+                    Err(e) => {
+                        warn!(
+                            "error while parsing stream url using yt-dlp:\nerror: {}\nyt-dlp stdout: {}\nyt-dlp stderr: {}",
+                            e.to_string(),
+                            raw_url,
+                            stderr
+                        );
+                        Err(eyre::eyre!(e))
+                    }
                 }
             }
         }

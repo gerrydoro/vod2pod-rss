@@ -64,7 +64,7 @@ impl Transcoder {
 
     fn get_ffmpeg_command(ffmpeg_paramenters: &FfmpegParameters) -> Command {
         debug!("generating ffmpeg command");
-        let mut command = Command::new("ffmpeg");
+        let mut command = Command::new("/nix/store/lw5hkjsflpxl6d59bbxy2xjgavvab5kx-ffmpeg-8.0-bin/bin/ffmpeg");
         let command_ref = &mut command;
 
         command_ref
@@ -81,7 +81,7 @@ impl Transcoder {
             .args(["-f", ffmpeg_paramenters.audio_codec.get_extension_str()])
             .args([
                 "-bufsize",
-                (ffmpeg_paramenters.bitrate_kbit * 30).to_string().as_str(),
+                format!("{}k", ffmpeg_paramenters.bitrate_kbit * 30).as_str(),
             ])
             .args([
                 "-maxrate",
@@ -92,8 +92,8 @@ impl Transcoder {
                 ffmpeg_paramenters.timeout_in_seconds.to_string().as_str(),
             ])
             .args(["-hide_banner"])
-            .args(["-loglevel", "error"])
-            .args(["pipe:stdout"]);
+            .args(["-loglevel", "info"])
+            .args(["pipe:1"]);
         let args: Vec<String> = command_ref
             .get_args()
             .map(|x| x.to_string_lossy().to_string())
@@ -178,25 +178,6 @@ impl Transcoder {
 
                             if read_bytes == 0 {
                                 info!("transcoded everything");
-                                //pad end of stream with 00000000 bytes if client expects more data to be sent
-                                const NULL_BUFF: [u8; BUFFER_SIZE] = [0; BUFFER_SIZE];
-                                debug!(
-                                    "sending {} bytes of padding",
-                                    expected_bytes_count - sent_bytes_count
-                                );
-                                while sent_bytes_count < expected_bytes_count {
-                                    let padding_bytes = expected_bytes_count - sent_bytes_count;
-                                    if padding_bytes >= BUFFER_SIZE {
-                                        _ = tx_stdout
-                                            .blocking_send(Ok(Bytes::copy_from_slice(&NULL_BUFF)));
-                                        sent_bytes_count += BUFFER_SIZE;
-                                    } else {
-                                        _ = tx_stdout.blocking_send(Ok(Bytes::copy_from_slice(
-                                            &NULL_BUFF[..padding_bytes],
-                                        )));
-                                        sent_bytes_count += padding_bytes;
-                                    }
-                                }
                                 _ = child.wait();
                                 break;
                             }
