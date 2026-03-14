@@ -179,9 +179,9 @@
               description = "VoD2Pod-RSS - Convert video feeds to podcast RSS";
               after = [
                 "network.target"
-                "redis.service"
+                
               ];
-              requires = [ "redis.service" ];
+              requires = [  ];
               wantedBy = [ "multi-user.target" ];
 
               serviceConfig = {
