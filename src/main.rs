@@ -25,7 +25,10 @@ async fn main() -> std::io::Result<()> {
         );
     }
 
-    let listener = TcpListener::bind("0.0.0.0:8080").expect("Failed to bind");
+    // Get port from environment variable or default to 8080
+    let port = env::var("PORT").unwrap_or_else(|_| "8080".to_string());
+    let bind_address = format!("0.0.0.0:{port}");
+    let listener = TcpListener::bind(&bind_address).expect("Failed to bind");
     info!("listening on http://{}", listener.local_addr().unwrap());
     server::spawn_server(listener)
         .expect("could not setup server")
