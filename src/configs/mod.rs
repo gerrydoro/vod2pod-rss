@@ -14,6 +14,7 @@ pub enum ConfName {
     RedisPort,
     RedisUrl,
     Mp3Bitrate,
+    UseBestAudioQuality,
     YoutubeApiKey,
     YoutubeMaxResults,
     TwitchClientId,
@@ -46,6 +47,9 @@ impl Conf for EnvConf {
             }
             ConfName::Mp3Bitrate => {
                 Ok(std::env::var("MP3_BITRATE").unwrap_or_else(|_| "192".to_string()))
+            }
+            ConfName::UseBestAudioQuality => {
+                Ok(std::env::var("USE_BEST_AUDIO_QUALITY").unwrap_or_else(|_| "false".to_string()))
             }
             ConfName::TwitchClientId => std::env::var("TWITCH_CLIENT_ID")
                 .map_err(|e| eyre::eyre!(e))
