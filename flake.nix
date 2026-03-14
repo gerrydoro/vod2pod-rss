@@ -33,7 +33,7 @@
         ];
 
         # Build the VoD2Pod-RSS package
-        vod2pod-rss = pkgs.rustPlatform.buildRustPackage {
+        vod2pod-rss-pkg = pkgs.rustPlatform.buildRustPackage {
           pname = "vod2pod-rss";
           version = "1.2.5";
 
@@ -84,12 +84,12 @@
       in
       {
         packages = {
-          inherit vod2pod-rss;
-          default = vod2pod-rss;
+          default = vod2pod-rss-pkg;
+          vod2pod-rss = vod2pod-rss-pkg;
         };
 
         apps.default = flake-utils.lib.mkApp {
-          drv = vod2pod-rss;
+          drv = vod2pod-rss-pkg;
           name = "vod2pod-rss";
         };
 
@@ -118,5 +118,94 @@
           '';
         };
       }
-    );
+    )
+    // {
+      # NixOS module for system-wide installation
+      nixosModules.default =
+        {
+          config,
+          pkgs,
+          lib,
+          ...
+        }:
+        let
+          cfg = config.services.vod2pod-rss;
+        in
+        {
+          options.services.vod2pod-rss = {
+            enable = lib.mkEnableOption "VoD2Pod-RSS service";
+
+            package = lib.mkOption {
+              type = lib.types.package;
+              default = self.packages.${pkgs.system}.default;
+              description = "VoD2Pod-RSS package to use";
+            };
+
+            port = lib.mkOption {
+              type = lib.types.port;
+              default = 65001;
+              description = "Port to listen on";
+            };
+
+            settings = {
+              ytApiKey = lib.mkOption {
+                type = lib.types.nullOr lib.types.str;
+                default = null;
+                description = "YouTube API key";
+              };
+
+              useBestAudioQuality = lib.mkOption {
+                type = lib.types.bool;
+                default = false;
+                description = "Use best audio quality from yt-dlp";
+              };
+
+              audioCodec = lib.mkOption {
+                type = lib.types.enum [
+                  "MP3"
+                  "OPUS"
+                  "OGG_VORBIS"
+                ];
+                default = "MP3";
+                description = "Audio codec";
+              };
+            };
+          };
+
+          config = lib.mkIf cfg.enable {
+            environment.systemPackages = [ cfg.package ];
+
+            systemd.services.vod2pod-rss = {
+              description = "VoD2Pod-RSS - Convert video feeds to podcast RSS";
+              after = [
+                "network.target"
+                "redis.service"
+              ];
+              requires = [ "redis.service" ];
+              wantedBy = [ "multi-user.target" ];
+
+              serviceConfig = {
+                Type = "simple";
+                User = "vod2pod-rss";
+                Group = "vod2pod-rss";
+                ExecStart = "${cfg.package}/bin/app";
+                Restart = "always";
+                Environment = [
+                  "PORT=${toString cfg.port}"
+                  "USE_BEST_AUDIO_QUALITY=${if cfg.settings.useBestAudioQuality then "true" else "false"}"
+                  "AUDIO_CODEC=${cfg.settings.audioCodec}"
+                ]
+                ++ lib.optional (cfg.settings.ytApiKey != null) "YT_API_KEY=${cfg.settings.ytApiKey}";
+              };
+            };
+
+            users.users.vod2pod-rss = {
+              isSystemUser = true;
+              group = "vod2pod-rss";
+            };
+
+            users.groups.vod2pod-rss = { };
+          };
+        };
+    };
 }
