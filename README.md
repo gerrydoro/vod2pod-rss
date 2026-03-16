@@ -76,6 +76,69 @@ Also by being on the beta branch you might help me find bugs before I make any n
 
 To switch open the compose docker-compose.yml and edit the vod2pod image section from "latest" to "beta", then follow the steps to update
 
+## Nix / NixOS
+
+### NixOS Module
+
+VoD2Pod-RSS can be installed as a NixOS module using flakes. Add the following to your `/etc/nixos/flake.nix`:
+
+```nix
+{
+  inputs = {
+    nixpkgs.url = "github:NixOS/nixpkgs/nixos-25.11";
+    vod2pod-rss.url = "github:gerrydoro/vod2pod-rss";
+  };
+
+  outputs = { self, nixpkgs, vod2pod-rss, ... }: {
+    nixosConfigurations.your-hostname = nixpkgs.lib.nixosSystem {
+      system = "x86_64-linux";
+      modules = [
+        ./configuration.nix
+        vod2pod-rss.nixosModules.default
+      ];
+    };
+  };
+}
+```
+
+Then configure the service in your NixOS configuration:
+
+```nix
+{
+  services.vod2pod-rss = {
+    enable = true;
+    port = 65001;
+    settings = {
+      ytApiKey = "your-youtube-api-key"; # Optional, for >15 items
+      useBestAudioQuality = true;        # Use best audio from yt-dlp
+      audioCodec = "OPUS";               # MP3, OPUS, or OGG_VORBIS
+    };
+  };
+}
+```
+
+Rebuild your system:
+
+```bash
+sudo nixos-rebuild switch --flake .#your-hostname
+```
+
+### Nix Package
+
+For non-NixOS systems with Nix installed:
+
+```bash
+nix run github:gerrydoro/vod2pod-rss
+```
+
+Or add to your `configuration.nix` or `home.nix`:
+
+```nix
+environment.systemPackages = [
+  (inputs.vod2pod-rss.packages.${system}.default)
+];
+```
+
 ## Configurations
 ### Web Server Port
 - `ports`: "80:8080" (optional) Change 80 to another port if you already use the port 80 on your host
