@@ -175,13 +175,33 @@
           config = lib.mkIf cfg.enable {
             environment.systemPackages = [ cfg.package ];
 
+            # Redis instance for VoD2Pod-RSS
+            # The application requires TCP connection (doesn't support Unix sockets)
+            services.redis.servers.vod2pod = {
+              enable = true;
+              port = 6380;
+              bind = "127.0.0.1";
+            };
+
+            # User and group for the service
+            users.users.vod2pod-rss = {
+              isSystemUser = true;
+              group = "vod2pod-rss";
+              description = "VoD2Pod-RSS service user";
+              home = "/var/lib/vod2pod-rss";
+              createHome = true;
+            };
+
+            users.groups.vod2pod-rss = { };
+
+            # Systemd service configuration
             systemd.services.vod2pod-rss = {
               description = "VoD2Pod-RSS - Convert video feeds to podcast RSS";
               after = [
                 "network.target"
-                
+                "redis-vod2pod.service"
               ];
-              requires = [  ];
+              requires = [ "redis-vod2pod.service" ];
               wantedBy = [ "multi-user.target" ];
 
               serviceConfig = {
@@ -190,21 +210,41 @@
                 Group = "vod2pod-rss";
                 ExecStart = "${cfg.package}/bin/app";
                 Restart = "always";
+                RestartSec = "5s";
+                WorkingDirectory = "/var/lib/vod2pod-rss";
                 Environment = [
                   "PORT=${toString cfg.port}"
+                  "REDIS_ADDRESS=127.0.0.1"
+                  "REDIS_PORT=6380"
                   "USE_BEST_AUDIO_QUALITY=${if cfg.settings.useBestAudioQuality then "true" else "false"}"
                   "AUDIO_CODEC=${cfg.settings.audioCodec}"
                 ]
                 ++ lib.optional (cfg.settings.ytApiKey != null) "YT_API_KEY=${cfg.settings.ytApiKey}";
+
+                # Security hardening
+                ProtectSystem = "full";
+                ProtectHome = true;
+                PrivateTmp = true;
+                NoNewPrivileges = true;
+                RestrictAddressFamilies = [
+                  "AF_INET"
+                  "AF_INET6"
+                ];
               };
+
+              # Copy templates on activation
+              preStart = ''
+                if [ -d "${cfg.package}/templates" ]; then
+                  cp -r ${cfg.package}/templates/* /var/lib/vod2pod-rss/templates/ 2>/dev/null || true
+                fi
+              '';
             };
 
-            users.users.vod2pod-rss = {
-              isSystemUser = true;
-              group = "vod2pod-rss";
-            };
-
-            users.groups.vod2pod-rss = { };
+            # Ensure templates directory exists
+            systemd.tmpfiles.rules = [
+              "d /var/lib/vod2pod-rss 0755 vod2pod-rss vod2pod-rss -"
+              "d /var/lib/vod2pod-rss/templates 0755 vod2pod-rss vod2pod-rss -"
+            ];
           };
         };
     };
