@@ -3,10 +3,10 @@ use cached::proc_macro::io_cached;
 #[allow(unused_imports)]
 use cached::AsyncRedisCache;
 use feed_rs::model::Feed;
-use google_youtube3::{
-    api::{self, PlaylistItem},
-    hyper, hyper_rustls, YouTube,
-};
+use google_apis_common::auth::NoToken;
+use google_youtube3::{api::{self, PlaylistItem}, hyper_rustls, YouTube};
+use hyper_util::client::legacy::Client;
+use hyper_util::rt::TokioExecutor;
 use std::{collections::HashMap, str::FromStr, time::Duration};
 
 use async_trait::async_trait;
@@ -453,14 +453,15 @@ async fn fetch_playlist(id: String, api_key: &String) -> Result<api::Playlist, e
     Ok(playlist)
 }
 
-fn get_youtube_hub() -> YouTube<hyper_rustls::HttpsConnector<hyper::client::HttpConnector>> {
-    let auth = google_youtube3::client::NoToken;
+fn get_youtube_hub() -> YouTube<hyper_rustls::HttpsConnector<hyper_util::client::legacy::connect::HttpConnector>> {
+    let auth = NoToken;
     let connector = hyper_rustls::HttpsConnectorBuilder::new()
         .with_native_roots()
+        .expect("Failed to initialize TLS")
         .https_only()
         .enable_http1()
         .build();
-    let client = hyper::Client::builder().build(connector);
+    let client = Client::builder(TokioExecutor::new()).build(connector);
 
     YouTube::new(client, auth)
 }
