@@ -1,4 +1,4 @@
-# vod2pod-rss [![tests](https://github.com/madiele/vod2pod-rss/actions/workflows/rust.yml/badge.svg)](https://github.com/madiele/vod2pod-rss/actions/workflows/rust.yml) [![stable image](https://github.com/madiele/vod2pod-rss/actions/workflows/docker-image.yml/badge.svg?branch=stable)](https://github.com/madiele/vod2pod-rss/actions/workflows/docker-image.yml) [![beta image](https://github.com/madiele/vod2pod-rss/actions/workflows/docker-image-beta.yml/badge.svg)](https://github.com/madiele/vod2pod-rss/actions/workflows/docker-image-beta.yml)
+# vod2pod-rss [![tests](https://github.com/gerrydoro/vod2pod-rss/actions/workflows/rust.yml/badge.svg)](https://github.com/gerrydoro/vod2pod-rss/actions/workflows/rust.yml) [![stable image](https://github.com/gerrydoro/vod2pod-rss/actions/workflows/docker-image.yml/badge.svg?branch=stable)](https://github.com/gerrydoro/vod2pod-rss/actions/workflows/docker-image.yml) [![beta image](https://github.com/gerrydoro/vod2pod-rss/actions/workflows/docker-image-beta.yml/badge.svg)](https://github.com/gerrydoro/vod2pod-rss/actions/workflows/docker-image-beta.yml)
 
 Converts a YouTube or Twitch channel into a full blown audio podcast feed.
 
@@ -42,14 +42,14 @@ Converts a YouTube or Twitch channel into a full blown audio podcast feed.
 See configurations [below](#configurations)
 
 # Install
-## Clone This Repository  
+## Clone This Repository
 ```
-git clone https://github.com/madiele/vod2pod-rss.git
+git clone https://github.com/gerrydoro/vod2pod-rss.git
 ```
 
 ## Docker
 - Install [Docker Compose](https://docs.docker.com/compose/install/)
-- Precompiled images are available [here](https://hub.docker.com/r/madiele/vod2pod-rss/) for linux machines with arm64, amd64 and armv7 (raspberry pis are supported).
+- Precompiled images are available [here](https://hub.docker.com/r/gerrydoro/vod2pod-rss/) for linux machines with arm64, amd64 and armv7 (raspberry pis are supported).
 
 ### Docker Compose
 ```
@@ -70,11 +70,11 @@ sudo docker system prune
 
 #### Switching to the Beta branch
 
-The beta branch is a version of vod2pod that is always updated to the latest yt-dlp releases in a matter of days, if you have problems try it out first to see if they are fixed, then open an issue so that I can consider making a new stable release
+The beta branch is a version of vod2pod that is always updated to the latest yt-dlp releases in a matter of days. If you have problems, try it out first to see if they are fixed, then open an issue.
 
-Also by being on the beta branch you might help me find bugs before I make any new stable release, so you'll help the project too
+Also by being on the beta branch you might help find bugs before any new stable release, so you'll help the project too.
 
-To switch open the compose docker-compose.yml and edit the vod2pod image section from "latest" to "beta", then follow the steps to update
+To switch, open the compose docker-compose.yml and edit the vod2pod image section from "latest" to "beta", then follow the steps to update.
 
 ## Nix / NixOS
 
@@ -172,16 +172,10 @@ Note: These can also be set using Docker [.env files](https://docs.docker.com/co
 
 # Honorable Mentions
 
-These projects were fundamental for the success of vod2pod-rss, originally they handled the feed generation for youtube and twitch, now this is all done by vod2pod-rss internally so they are not used anymore, but were still helpful to get vod2pod-rss up and running fast.
-* Youtube support was possible thanks to the cool [podtube fork project by amckee](https://github.com/amckee/PodTube) consider dropping him a star.
-* Twitch support was possible thanks to [my fork](https://github.com/madiele/TwitchToPodcastRSS) of [lzeke0's TwitchRSS](https://github.com/lzeke0/TwitchRSS) drop a star to him too!
-
-## Donations
-
-This is a passion project, and mostly made for personal use, but if you want to gift a pizza margherita, feel free!
-
-[!["Buy Me A Coffee"](https://www.buymeacoffee.com/assets/img/custom_images/orange_img.png)](https://www.buymeacoffee.com/madiele)
+These projects were fundamental for the success of vod2pod-rss. Originally they handled the feed generation for YouTube and Twitch; now this is all done by vod2pod-rss internally so they are not used anymore, but were still helpful to get vod2pod-rss up and running fast.
+* YouTube support was possible thanks to the cool [PodTube fork project by amckee](https://github.com/amckee/PodTube) - consider dropping a star.
+* Twitch support was possible thanks to [lzeke0's TwitchRSS](https://github.com/lzeke0/TwitchRSS) - drop a star to him too!
 
 ## Contributing
 
-check the [CONTRIBUTING.md](CONTRIBUTING.md) to find a tutorial on how to setup your enviroment for develpment
+Check the [CONTRIBUTING.md](CONTRIBUTING.md) file for a tutorial on how to set up your environment for development.

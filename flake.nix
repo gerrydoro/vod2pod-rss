@@ -75,7 +75,7 @@
 
           meta = with pkgs.lib; {
             description = "Convert YouTube, Twitch, PeerTube, or RSS feeds into podcast RSS feeds";
-            homepage = "https://github.com/madiele/vod2pod-rss";
+            homepage = "https://github.com/gerrydoro/vod2pod-rss";
             license = licenses.mit;
             maintainers = [ maintainers.geralddoro ];
             mainProgram = "app";

@@ -1,5 +1,5 @@
 [package]
-authors = ["madiele92@gmail.com"]
+authors = ["gerrydoro97@gmail.com"]
 edition = "2021"
 name = "vod2pod-rss"
 version = "1.2.5"

@@ -26,7 +26,7 @@ async fn fetch_yt_feed_by_channel_url_ok_requires_api_key() {
 
     let response = client
         .get(&format!("{}/transcodize_rss", &address))
-        .query(&[("url", "https://www.youtube.com/@madiele92")])
+        .query(&[("url", "https://www.youtube.com/@gerrydoro")])
         .send()
         .await
         .expect("Failed to execute request.");
@@ -138,7 +138,7 @@ async fn fetch_twitch_feed_by_channel_url_ok_requires_api_key() {
 }
 
 fn check_youtube_feed(feed: Channel) {
-    assert_eq!("Mattia Di Eleuterio", feed.title());
+    assert_eq!("Gerry Doro", feed.title());
     assert_eq!(
         "https://www.youtube.com/channel/UCXssEBQ8JWH1NacVIyQXe8g",
         feed.link()

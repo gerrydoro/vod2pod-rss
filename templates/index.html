@@ -1,97 +1,113 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>vod2pod-rss</title>
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.0.2/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-EVSTQN3/azprG1Anm3QDgpJLIm9Nao0Yz1ztcQTwFspd3yD65VohhpuuCOmLASjC" crossorigin="anonymous">
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.0.2/dist/js/bootstrap.bundle.min.js" integrity="sha384-MrcW6ZMFYlzcLA8Nl+NtUVF0sA7MsXsP1UyJoMp4YLEuNSfAP+JcXn/tWtIaxVXM" crossorigin="anonymous"></script>
-    <style>
-        body {
-            min-height: 100vh;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            background-color: #0d1117;
-            color: #c9d1d9;
-            transition: background-color 0.5s ease;
-        }
-        body.dark-mode {
-            background-color: #c9d1d9;
-            color: #0d1117;
-        }
-        .item {
-          display: none;
-          animation: fadeIn 1s ease-in-out;
-          color: #c9d1d9;
-          font-size: 18px;
-          margin-top: 5px;
-          background-color: #161b22;
-          animation: slideLeft 0.3s ease forwards;
-        }
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>vod2pod-rss</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.0.2/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-EVSTQN3/azprG1Anm3QDgpJLIm9Nao0Yz1ztcQTwFspd3yD65VohhpuuCOmLASjC" crossorigin="anonymous">
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.0.2/dist/js/bootstrap.bundle.min.js" integrity="sha384-MrcW6ZMFYlzcLA8Nl+NtUVF0sA7MsXsP1UyJoMp4YLEuNSfAP+JcXn/tWtIaxVXM" crossorigin="anonymous"></script>
+  <style>
+    body {
+      min-height: 100vh;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      background-color: #0d1117;
+      color: #c9d1d9;
+      transition: background-color 0.5s ease;
+    }
 
-      @keyframes fadeIn {
-        0% {
-          opacity: 0;
-        }
-        100% {
-          opacity: 1;
-        }
+    body.dark-mode {
+      background-color: #c9d1d9;
+      color: #0d1117;
+    }
+
+    .item {
+      display: none;
+      animation: fadeIn 1s ease-in-out;
+      color: #c9d1d9;
+      font-size: 18px;
+      margin-top: 5px;
+      background-color: #161b22;
+      animation: slideLeft 0.3s ease forwards;
+    }
+
+    @keyframes fadeIn {
+      0% {
+        opacity: 0;
       }
-  .error-animation {
-    background-color: red;
-    animation: shake 0.3s cubic-bezier(.36,.07,.19,.97) both;
-  }
 
-  @keyframes shake {
-    10%, 90% {
-      transform: translate3d(-1px, 0, 0);
+      100% {
+        opacity: 1;
+      }
     }
 
-    20%, 80% {
-      transform: translate3d(2px, 0, 0);
+    .error-animation {
+      background-color: red;
+      animation: shake 0.3s cubic-bezier(.36, .07, .19, .97) both;
     }
 
-    30%, 50%, 70% {
-      transform: translate3d(-4px, 0, 0);
+    @keyframes shake {
+
+      10%,
+      90% {
+        transform: translate3d(-1px, 0, 0);
+      }
+
+      20%,
+      80% {
+        transform: translate3d(2px, 0, 0);
+      }
+
+      30%,
+      50%,
+      70% {
+        transform: translate3d(-4px, 0, 0);
+      }
+
+      40%,
+      60% {
+        transform: translate3d(4px, 0, 0);
+      }
     }
 
-    40%, 60% {
-      transform: translate3d(4px, 0, 0);
+    .container {
+      max-width: 530px;
+      background-color: #161b22;
+      padding: 20px;
+      border-radius: 10px;
+      box-shadow: 0 0 10px rgba(0, 0, 0, 0.5);
     }
-  }
-        .container {
-            max-width: 530px;
-            background-color: #161b22;
-            padding: 20px;
-            border-radius: 10px;
-            box-shadow: 0 0 10px rgba(0, 0, 0, 0.5);
-        }
-        .container.dark-mode {
-            background-color: #c9d1d9;
-            color: #0d1117;
-            box-shadow: 0 0 10px rgba(0, 0, 0, 0.5);
-        }
-        .form-control {
-          background-color: #2d2d2d;
-          color: #fff;
-          border: 1px solid #555;
-        }
-        .form-control:focus {
-          background-color: #2d2d2d;
-          color: #fff;
-          border: 1px solid #555;
-        }
-        #rssUrl {
-          background-color: #2b2b2b;
-          color: rgba(217, 217, 217, 0.5);
-        }
-    </style>
+
+    .container.dark-mode {
+      background-color: #c9d1d9;
+      color: #0d1117;
+      box-shadow: 0 0 10px rgba(0, 0, 0, 0.5);
+    }
+
+    .form-control {
+      background-color: #2d2d2d;
+      color: #fff;
+      border: 1px solid #555;
+    }
+
+    .form-control:focus {
+      background-color: #2d2d2d;
+      color: #fff;
+      border: 1px solid #555;
+    }
+
+    #rssUrl {
+      background-color: #2b2b2b;
+      color: rgba(217, 217, 217, 0.5);
+    }
+  </style>
 </head>
 
 <body>
   <div class="container">
-<h1 class="text-center mb-4">vod2pod-rss</h1>
+    <h1 class="text-center mb-4">vod2pod-rss</h1>
     <div class="input-group mb-3">
       <input type="text" class="form-control" id="channelUrl" onkeydown="if(event.keyCode === 13) generateRSSURL()" placeholder="Enter YouTube or Twitch channel/playlist URL" aria-describedby="generateButton" oninput="toggleClearButton()">
       <button class="btn btn-secondary" type="button" id="clearButton" onclick="clearInput()" style="display:none;">x</button>
@@ -101,107 +117,114 @@
       <input type="text" class="form-control" id="rssUrl" placeholder="Generated RSS URL" readonly autocomplete="off">
       <button class="btn btn-secondary" type="button" id="copyButton" onclick="copyToClipboard()" style="width: 100px;">Copy URL</button>
     </div>
-      <div class="rss-preview-container" style="display: none;">
-        <h2 class="text-center mb-4">RSS Feed Preview</h2>
-        <div class="d-flex justify-content-center">
-          <div id="loadingCircle" style="display:none;">
-            <div style="border: 8px solid #f3f3f3;border-top: 8px solid #3498db;border-radius: 50%;width: 50px;height: 50px;animation: spin 0.7s linear infinite;"></div>
-            <style>
-            @keyframes spin {0% {transform: rotate(0deg);} 100% {transform: rotate(360deg);}}
-            </style>
-          </div>
+    <div class="rss-preview-container" style="display: none;">
+      <h2 class="text-center mb-4">RSS Feed Preview</h2>
+      <div class="d-flex justify-content-center">
+        <div id="loadingCircle" style="display:none;">
+          <div style="border: 8px solid #f3f3f3;border-top: 8px solid #3498db;border-radius: 50%;width: 50px;height: 50px;animation: spin 0.7s linear infinite;"></div>
+          <style>
+            @keyframes spin {
+              0% {
+                transform: rotate(0deg);
+              }
+
+              100% {
+                transform: rotate(360deg);
+              }
+            }
+          </style>
         </div>
-        <div id="rssPreviewContent"></div>
       </div>
-      <footer class="text-center">
-  <p class="mb-4">
-    <small class="text-muted">made by <a href="https://github.com/madiele" target="_blank">Mattia Di Eleuterio</a></small>
-    <small class="text-muted">check the repo on <a href="https://github.com/madiele/vod2pod-rss" target="_blank">github</a></small>
-    <!-- ###VERSION### -->
-  </p>
-</footer>
+      <div id="rssPreviewContent"></div>
+    </div>
+    <footer class="text-center">
+      <p class="mb-4">
+        <small class="text-muted">check the repo on <a href="https://github.com/gerrydoro/vod2pod-rss" target="_blank">github</a></small>
+        <!-- ###VERSION### -->
+      </p>
+    </footer>
   </div>
   <script type="text/javascript" src="https://cdn.jsdelivr.net/npm/lozad/dist/lozad.min.js"></script>
   <script>
-function toggleClearButton() {
-  const clearButton = document.getElementById("clearButton");
-  const inputField = document.getElementById("channelUrl");
+    function toggleClearButton() {
+      const clearButton = document.getElementById("clearButton");
+      const inputField = document.getElementById("channelUrl");
 
-  if (inputField.value !== "") {
-    clearButton.style.display = "inline";
-  } else {
-    clearButton.style.display = "none";
-  }
-}
+      if (inputField.value !== "") {
+        clearButton.style.display = "inline";
+      } else {
+        clearButton.style.display = "none";
+      }
+    }
 
-function clearInput() {
-  const inputField = document.getElementById("channelUrl");
-  inputField.value = "";
-  toggleClearButton();
-}
+    function clearInput() {
+      const inputField = document.getElementById("channelUrl");
+      inputField.value = "";
+      toggleClearButton();
+    }
 
-async function generateRSSURL() {
-  const channelUrl = document.getElementById("channelUrl").value;
-  const baseUrl = window.location.href.endsWith('/') ? window.location.href : window.location.href + '/';
-  const rssUrl = `${baseUrl}transcodize_rss?url=${channelUrl}`;
-  document.getElementById("rssUrl").value = rssUrl;
-  await displayRSSPreview(rssUrl);
-}
+    async function generateRSSURL() {
+      const channelUrl = document.getElementById("channelUrl").value;
+      const baseUrl = window.location.href.endsWith('/') ? window.location.href : window.location.href + '/';
+      const rssUrl = `${baseUrl}transcodize_rss?url=${channelUrl}`;
+      document.getElementById("rssUrl").value = rssUrl;
+      await displayRSSPreview(rssUrl);
+    }
 
-async function displayRSSPreview(rssUrl) {
-  try {
-    document.getElementById("rssPreviewContent").innerHTML = "";
-    document.getElementById("loadingCircle").style.display = "block";
-    const rssPreviewContainer = document.querySelector(".rss-preview-container");
-    rssPreviewContainer.style.display = "block";
-    const rss = await fetchData(rssUrl);
+    async function displayRSSPreview(rssUrl) {
+      try {
+        document.getElementById("rssPreviewContent").innerHTML = "";
+        document.getElementById("loadingCircle").style.display = "block";
+        const rssPreviewContainer = document.querySelector(".rss-preview-container");
+        rssPreviewContainer.style.display = "block";
+        const rss = await fetchData(rssUrl);
 
-    const podcastInfo = extractPodcastInfo(rss);
-    displayPodcastInfo(podcastInfo);
+        const podcastInfo = extractPodcastInfo(rss);
+        displayPodcastInfo(podcastInfo);
 
-    document.getElementById("loadingCircle").style.display = "none";
-    const episodes = extractEpisodes(rss);
-    displayEpisodes(episodes);
-    const observer = lozad(); // lazy loads elements with default selector as '.lozad'
-    observer.observe();
-  } catch (error) {
-    document.getElementById("loadingCircle").style.display = "none";
-    var button = document.getElementById("generateButton");
-    button.classList.add("error-animation");
-    button.classList.add('btn-danger');
-    displayError(error);
-    setTimeout(function() {
-      button.classList.remove("error-animation");
-      button.classList.remove('btn-danger');
-    }, 2000);
-  }
-}
+        document.getElementById("loadingCircle").style.display = "none";
+        const episodes = extractEpisodes(rss);
+        displayEpisodes(episodes);
+        const observer = lozad(); // lazy loads elements with default selector as '.lozad'
+        observer.observe();
+      } catch (error) {
+        document.getElementById("loadingCircle").style.display = "none";
+        var button = document.getElementById("generateButton");
+        button.classList.add("error-animation");
+        button.classList.add('btn-danger');
+        displayError(error);
+        setTimeout(function () {
+          button.classList.remove("error-animation");
+          button.classList.remove('btn-danger');
+        }, 2000);
+      }
+    }
 
-async function fetchData(rssUrl) {
-  const response = await fetch(rssUrl);
-  if (!response.ok) {
-    const errorText = await response.text();
-    throw new Error(`Error ${response.status}: ${errorText}`);
-  }
-  const text = await response.text();
-  const parser = new DOMParser();
-  const rss = parser.parseFromString(text, "application/xml");
-  return rss;
-}
+    async function fetchData(rssUrl) {
+      const response = await fetch(rssUrl);
+      if (!response.ok) {
+        const errorText = await response.text();
+        throw new Error(`Error ${response.status}: ${errorText}`);
+      }
+      const text = await response.text();
+      const parser = new DOMParser();
+      const rss = parser.parseFromString(text, "application/xml");
+      return rss;
+    }
 
-function extractPodcastInfo(rss) {
-  const podcast = {
-    title: rss.querySelector("channel > title").textContent,
-    thumbnail: rss.querySelector("channel > image") ? rss.querySelector("channel > image > url").textContent : null,
-    description: rss.querySelector("channel > description").textContent
-  };
-  return podcast;
-}
+    function extractPodcastInfo(rss) {
+      const podcast = {
+        title: rss.querySelector("channel > title").textContent,
+        thumbnail: rss.querySelector("channel > image") ? rss.querySelector("channel > image > url").textContent : null,
+        description: rss.querySelector("channel > description").textContent
+      };
+      return podcast;
+    }
 
-function displayPodcastInfo(podcast) {
-  const podcastInfoContainer = document.createElement("div");
-  podcastInfoContainer.classList.add("item");
-  podcastInfoContainer.innerHTML = `
+    function displayPodcastInfo(podcast) {
+      const podcastInfoContainer = document.createElement("div");
+      podcastInfoContainer.classList.add("item");
+      podcastInfoContainer.innerHTML = `
     <div class="card bg-dark text-white">
       <div class="card-body">
         <div class="row">
@@ -216,30 +239,30 @@ function displayPodcastInfo(podcast) {
       </div>
     </div>
   `;
-  podcastInfoContainer.style.display = "block";
-  document.getElementById("rssPreviewContent").appendChild(podcastInfoContainer);
-}
+      podcastInfoContainer.style.display = "block";
+      document.getElementById("rssPreviewContent").appendChild(podcastInfoContainer);
+    }
 
-function extractEpisodes(rss) {
-  const items = [...rss.querySelectorAll("channel > item")];
-  const episodes = items.map(item => {
-    return {
-      title: item.querySelector("title").textContent,
-      mp3_url: item.querySelector("enclosure") ? item.querySelector("enclosure").getAttribute("url") : null,
-      image: item.querySelector("image") ? item.querySelector("image").getAttribute("href") : null,
-      description: item.querySelector("description") ? item.querySelector("description").textContent : ""
-    };
-  });
-  return episodes;
-}
+    function extractEpisodes(rss) {
+      const items = [...rss.querySelectorAll("channel > item")];
+      const episodes = items.map(item => {
+        return {
+          title: item.querySelector("title").textContent,
+          mp3_url: item.querySelector("enclosure") ? item.querySelector("enclosure").getAttribute("url") : null,
+          image: item.querySelector("image") ? item.querySelector("image").getAttribute("href") : null,
+          description: item.querySelector("description") ? item.querySelector("description").textContent : ""
+        };
+      });
+      return episodes;
+    }
 
-function displayEpisodes(episodes) {
-  const episodeListContainer = document.createElement("div");
-  episodeListContainer.classList.add("card-deck");
-  episodes.forEach(episode => {
+    function displayEpisodes(episodes) {
+      const episodeListContainer = document.createElement("div");
+      episodeListContainer.classList.add("card-deck");
+      episodes.forEach(episode => {
 
-const episodeItem = document.createElement("div");
-    episodeItem.innerHTML = `
+        const episodeItem = document.createElement("div");
+        episodeItem.innerHTML = `
 <div class="card bg-dark text-white lozad" data-background-image="${episode.image}" style="border: none; background-position: center; background-size: cover;  animation: fadeIn ease-in 1s;">
   <div class="rounded card-body" style="background-color: rgba(0, 0, 0, 0.8);">
     <div class="row">
@@ -275,69 +298,69 @@ const episodeItem = document.createElement("div");
 }
 </style>
     `;
-    episodeItem.querySelector(".play-button").addEventListener("click", () => togglePlay(episodeItem));
-    episodeListContainer.appendChild(episodeItem);
-    episodeItem.classList.add("item");
-    episodeItem.style.display = "block";
-  });
-  document.getElementById("rssPreviewContent").appendChild(episodeListContainer);
-}
+        episodeItem.querySelector(".play-button").addEventListener("click", () => togglePlay(episodeItem));
+        episodeListContainer.appendChild(episodeItem);
+        episodeItem.classList.add("item");
+        episodeItem.style.display = "block";
+      });
+      document.getElementById("rssPreviewContent").appendChild(episodeListContainer);
+    }
 
-function togglePlay(episodeItem) {
-  const episodePlayer = episodeItem.querySelector(".episode-player");
-  const playButton = episodeItem.querySelector(".play-button");
+    function togglePlay(episodeItem) {
+      const episodePlayer = episodeItem.querySelector(".episode-player");
+      const playButton = episodeItem.querySelector(".play-button");
 
-  if (episodePlayer.style.display === "none") {
-    playButton.textContent = "Stop";
-    episodePlayer.style.display = "block";
-    const audio = document.createElement("audio");
-    audio.style.width = "100%";
-    audio.src = episodeItem.querySelector(".mp3-url").getAttribute("href");
-    audio.controls = true;
-    audio.play();
-    episodePlayer.appendChild(audio);
-  } else {
-    // Stop the episode
-    playButton.textContent = "Play";
-    episodePlayer.style.display = "none";
-    const audio = episodePlayer.querySelector("audio");
-    audio.pause();
-    audio.src = "";
-    episodePlayer.removeChild(audio);
-  }
-}
+      if (episodePlayer.style.display === "none") {
+        playButton.textContent = "Stop";
+        episodePlayer.style.display = "block";
+        const audio = document.createElement("audio");
+        audio.style.width = "100%";
+        audio.src = episodeItem.querySelector(".mp3-url").getAttribute("href");
+        audio.controls = true;
+        audio.play();
+        episodePlayer.appendChild(audio);
+      } else {
+        // Stop the episode
+        playButton.textContent = "Play";
+        episodePlayer.style.display = "none";
+        const audio = episodePlayer.querySelector("audio");
+        audio.pause();
+        audio.src = "";
+        episodePlayer.removeChild(audio);
+      }
+    }
 
-function displayError(error) {
-  const errorContainer = document.createElement("div");
-  errorContainer.id = "error-container";
-  errorContainer.classList.add("card", "bg-danger");
-  const errorCardBody = document.createElement("div");
-  errorCardBody.classList.add("card-body");
-  const errorTitle = document.createElement("h5");
-  errorTitle.classList.add("card-title");
-  errorTitle.textContent = "Error";
-  const errorMessage = document.createElement("p");
-  errorMessage.classList.add("card-text");
-  errorMessage.textContent = error.message;
-  errorCardBody.appendChild(errorTitle);
-  errorCardBody.appendChild(errorMessage);
-  errorContainer.appendChild(errorCardBody);
-  document.getElementById("rssPreviewContent").appendChild(errorContainer);
-}
+    function displayError(error) {
+      const errorContainer = document.createElement("div");
+      errorContainer.id = "error-container";
+      errorContainer.classList.add("card", "bg-danger");
+      const errorCardBody = document.createElement("div");
+      errorCardBody.classList.add("card-body");
+      const errorTitle = document.createElement("h5");
+      errorTitle.classList.add("card-title");
+      errorTitle.textContent = "Error";
+      const errorMessage = document.createElement("p");
+      errorMessage.classList.add("card-text");
+      errorMessage.textContent = error.message;
+      errorCardBody.appendChild(errorTitle);
+      errorCardBody.appendChild(errorMessage);
+      errorContainer.appendChild(errorCardBody);
+      document.getElementById("rssPreviewContent").appendChild(errorContainer);
+    }
 
-function copyToClipboard() {
-  const rssUrl = document.getElementById("rssUrl");
-  rssUrl.select();
-  rssUrl.setSelectionRange(0, 99999); // For mobile devices
-  document.execCommand("copy");
-  const copyButton = document.getElementById("copyButton");
-  copyButton.textContent = "Copied!";
-  copyButton.classList.add('btn-success');
-  setTimeout(() => {
-    copyButton.textContent = "Copy URL";
-    copyButton.classList.remove('btn-success');
-  }, 2000);
-}
+    function copyToClipboard() {
+      const rssUrl = document.getElementById("rssUrl");
+      rssUrl.select();
+      rssUrl.setSelectionRange(0, 99999); // For mobile devices
+      document.execCommand("copy");
+      const copyButton = document.getElementById("copyButton");
+      copyButton.textContent = "Copied!";
+      copyButton.classList.add('btn-success');
+      setTimeout(() => {
+        copyButton.textContent = "Copy URL";
+        copyButton.classList.remove('btn-success');
+      }, 2000);
+    }
   </script>
 </body>
 
