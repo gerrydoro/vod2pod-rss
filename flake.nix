@@ -43,6 +43,9 @@
             lockFile = ./Cargo.lock;
           };
 
+          # Pass features to ensure rustls crypto provider is configured
+          cargoExtraArgs = "--features google-youtube3/ring";
+
           # Disable tests as they require API keys
           doCheck = false;
 
