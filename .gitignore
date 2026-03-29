@@ -12,3 +12,4 @@ Cargo.lock
 .env
 devcontainerInstall.log
 .vscode/settings.json
+result
