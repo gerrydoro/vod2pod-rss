@@ -624,7 +624,7 @@ async fn find_yt_channel_url_with_c_id(url: &Url) -> eyre::Result<Url> {
         .await?;
     let conversion = std::str::from_utf8(&output.stdout);
     let feed_url = match conversion {
-        Ok(feed_url) => feed_url,
+        Ok(feed_url) => feed_url.trim(),
         Err(e) => {
             warn!(
                         "error while translating channel name using yt-dlp:\nerror: {}\nyt-dlp stdout: {}\nyt-dlp stderr: {}",
@@ -635,6 +635,16 @@ async fn find_yt_channel_url_with_c_id(url: &Url) -> eyre::Result<Url> {
             return Err(eyre::eyre!(e));
         }
     };
+    
+    if feed_url.is_empty() {
+        warn!(
+            "yt-dlp returned empty channel URL for {}\nyt-dlp stderr: {}",
+            url,
+            std::str::from_utf8(&output.stderr).unwrap_or_default()
+        );
+        return Err(eyre::eyre!("yt-dlp returned empty channel URL"));
+    }
+    
     Ok(Url::parse(feed_url)?)
 }
 
@@ -873,5 +883,16 @@ mod tests {
             assert!(item.title.is_some());
             assert!(item.description.is_some());
         }
+    }
+
+    #[test(tokio::test)]
+    async fn test_yt_dlp_channel_conversion() {
+        // Test that yt-dlp can convert a channel handle to a channel URL
+        let url = Url::parse("https://www.youtube.com/@LegalEagle").unwrap();
+        let result = find_yt_channel_url_with_c_id(&url).await;
+        
+        assert!(result.is_ok(), "yt-dlp should convert channel handle to URL");
+        let converted_url = result.unwrap();
+        assert!(converted_url.to_string().contains("youtube.com/channel/"));
     }
 }
