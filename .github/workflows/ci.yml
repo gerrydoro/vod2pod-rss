@@ -1,0 +1,24 @@
+# .github/workflows/ci.yml
+name: CI
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  build:
+    runs-on: [ self-hosted, nixos, vod2pod ]
+    
+    steps:
+    - uses: actions/checkout@v4
+    
+    - name: Install Nix
+      uses: cachix/install-nix-action@v25
+    
+    - name: Build
+      run: nix build .#vod2pod-rss
+    
+    - name: Test
+      run: nix flake check
