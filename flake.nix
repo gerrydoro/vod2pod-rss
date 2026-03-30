@@ -35,19 +35,19 @@
         # Build the VoD2Pod-RSS package
         vod2pod-rss-pkg = pkgs.rustPlatform.buildRustPackage {
           pname = "vod2pod-rss";
-          version = "1.2.6"; # Bump version to force rebuild
+          version = "1.2.6";
 
           src = ./.;
 
           cargoLock = {
             lockFile = ./Cargo.lock;
-            allowBuiltinFetchGit = true;
           };
 
-          # Pass features to ensure rustls crypto provider is configured
-          cargoExtraArgs = "--features google-youtube3/ring";
-          cargoBuildNoDefaultFeatures = true;
-          cargoBuildFeatures = "google-youtube3/ring";
+          # Use native TLS (OpenSSL) instead of rustls to avoid crypto provider issues
+          buildInputs = with pkgs; [
+            openssl
+            libiconv
+          ];
 
           # Disable tests as they require API keys
           doCheck = false;
@@ -57,11 +57,6 @@
             openssl
             makeWrapper
             perl
-          ];
-
-          buildInputs = with pkgs; [
-            openssl
-            libiconv
           ];
 
           # Copy templates to the package
