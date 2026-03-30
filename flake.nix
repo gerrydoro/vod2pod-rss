@@ -41,10 +41,13 @@
 
           cargoLock = {
             lockFile = ./Cargo.lock;
+            allowBuiltinFetchGit = true;
           };
 
           # Pass features to ensure rustls crypto provider is configured
           cargoExtraArgs = "--features google-youtube3/ring";
+          cargoBuildNoDefaultFeatures = true;
+          cargoBuildFeatures = "google-youtube3/ring";
 
           # Disable tests as they require API keys
           doCheck = false;
