@@ -13,3 +13,4 @@ Cargo.lock
 devcontainerInstall.log
 .vscode/settings.json
 result
+.temp
