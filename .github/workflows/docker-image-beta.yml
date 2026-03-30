@@ -10,7 +10,7 @@ on:
 concurrency: ${{ github.head_ref || github.ref_name }}
 
 jobs:
-  push_to_Docker_Hub_amd64:
+  push_to_ghcr_amd64:
       runs-on: ubuntu-latest
       steps:
         - name: checkout repo
@@ -26,24 +26,25 @@ jobs:
           shell: bash
         - name: Set up Docker Buildx
           uses: docker/setup-buildx-action@v3
-        - name: Login to DockerHub
+        - name: Login to GHCR
           uses: docker/login-action@v3
           with:
-            username: ${{ secrets.DOCKERHUB_USERNAME }}
-            password: ${{ secrets.DOCKERHUB_TOKEN }}
+            registry: ghcr.io
+            username: ${{ github.actor }}
+            password: ${{ secrets.GITHUB_TOKEN }}
         - name: Build and push
           uses: docker/build-push-action@v6
           with:
             context: ./
             file: ./Dockerfile
             push: true
-            tags: ${{ secrets.DOCKERHUB_USERNAME }}/vod2pod-rss:${{ env.VERSION }}-amd64-beta
+            tags: ghcr.io/${{ github.repository_owner }}/vod2pod-rss:${{ env.VERSION }}-amd64-beta
             platforms: linux/amd64
             cache-from: type=gha,scope=main-amd64
             cache-to: type=gha,mode=max,scope=main-amd64
             build-args: |
               BUILDKIT_INLINE_CACHE=1
-  push_to_Docker_Hub_arm64:
+  push_to_ghcr_arm64:
       runs-on: ubuntu-latest
       steps:
         - name: checkout repo
@@ -61,24 +62,25 @@ jobs:
           uses: docker/setup-qemu-action@v3
         - name: Set up Docker Buildx
           uses: docker/setup-buildx-action@v3
-        - name: Login to DockerHub
+        - name: Login to GHCR
           uses: docker/login-action@v3
           with:
-            username: ${{ secrets.DOCKERHUB_USERNAME }}
-            password: ${{ secrets.DOCKERHUB_TOKEN }}
+            registry: ghcr.io
+            username: ${{ github.actor }}
+            password: ${{ secrets.GITHUB_TOKEN }}
         - name: Build and push
           uses: docker/build-push-action@v6
           with:
             context: ./
             file: ./Dockerfile
             push: true
-            tags: ${{ secrets.DOCKERHUB_USERNAME }}/vod2pod-rss:${{ env.VERSION }}-arm64-beta
+            tags: ghcr.io/${{ github.repository_owner }}/vod2pod-rss:${{ env.VERSION }}-arm64-beta
             platforms: linux/arm64
             cache-from: type=gha,scope=main-arm64
             cache-to: type=gha,mode=max,scope=main-arm64
             build-args: |
               BUILDKIT_INLINE_CACHE=1
-  push_to_Docker_Hub_arm_v7:
+  push_to_ghcr_arm_v7:
       runs-on: ubuntu-latest
       steps:
         - name: Set Swap Space
@@ -100,18 +102,19 @@ jobs:
           uses: docker/setup-qemu-action@v3
         - name: Set up Docker Buildx
           uses: docker/setup-buildx-action@v3
-        - name: Login to DockerHub
+        - name: Login to GHCR
           uses: docker/login-action@v3
           with:
-            username: ${{ secrets.DOCKERHUB_USERNAME }}
-            password: ${{ secrets.DOCKERHUB_TOKEN }}
+            registry: ghcr.io
+            username: ${{ github.actor }}
+            password: ${{ secrets.GITHUB_TOKEN }}
         - name: Build and push
           uses: docker/build-push-action@v6
           with:
             context: ./
             file: ./Dockerfile
             push: true
-            tags: ${{ secrets.DOCKERHUB_USERNAME }}/vod2pod-rss:${{ env.VERSION }}-armv7-beta
+            tags: ghcr.io/${{ github.repository_owner }}/vod2pod-rss:${{ env.VERSION }}-armv7-beta
             platforms: linux/arm/v7
             cache-from: type=gha,scope=main-armv7
             cache-to: type=gha,mode=max,scope=main-armv7
@@ -119,7 +122,7 @@ jobs:
               BUILDKIT_INLINE_CACHE=1
               CARGO_REGISTRIES_CRATES_IO_PROTOCOL=sparse
   merge_tags:
-      needs: [push_to_Docker_Hub_arm64, push_to_Docker_Hub_arm_v7, push_to_Docker_Hub_amd64]
+      needs: [push_to_ghcr_arm64, push_to_ghcr_arm_v7, push_to_ghcr_amd64]
       runs-on: ubuntu-latest
       steps:
         - name: checkout repo
@@ -129,12 +132,13 @@ jobs:
             # Get the current version
             VERSION=$(grep -oP '^version = "\K[0-9]+\.[0-9]+\.[0-9]+' Cargo.toml)
             echo "VERSION=${VERSION}" >> $GITHUB_ENV
-        - name: Login to DockerHub
+        - name: Login to GHCR
           uses: docker/login-action@v3
           with:
-            username: ${{ secrets.DOCKERHUB_USERNAME }}
-            password: ${{ secrets.DOCKERHUB_TOKEN }}
+            registry: ghcr.io
+            username: ${{ github.actor }}
+            password: ${{ secrets.GITHUB_TOKEN }}
         - name: merge into version
-          run: docker buildx imagetools create -t ${{ secrets.DOCKERHUB_USERNAME }}/vod2pod-rss:beta ${{ secrets.DOCKERHUB_USERNAME }}/vod2pod-rss:${{ env.VERSION }}-armv7-beta ${{ secrets.DOCKERHUB_USERNAME }}/vod2pod-rss:${{ env.VERSION }}-arm64-beta ${{ secrets.DOCKERHUB_USERNAME }}/vod2pod-rss:${{ env.VERSION }}-amd64-beta
+          run: docker buildx imagetools create -t ghcr.io/${{ github.repository_owner }}/vod2pod-rss:beta ghcr.io/${{ github.repository_owner }}/vod2pod-rss:${{ env.VERSION }}-armv7-beta ghcr.io/${{ github.repository_owner }}/vod2pod-rss:${{ env.VERSION }}-arm64-beta ghcr.io/${{ github.repository_owner }}/vod2pod-rss:${{ env.VERSION }}-amd64-beta
         - name: merge into version
-          run: docker buildx imagetools create -t ${{ secrets.DOCKERHUB_USERNAME }}/vod2pod-rss:${{ env.VERSION }}-beta ${{ secrets.DOCKERHUB_USERNAME }}/vod2pod-rss:${{ env.VERSION }}-armv7-beta ${{ secrets.DOCKERHUB_USERNAME }}/vod2pod-rss:${{ env.VERSION }}-arm64-beta ${{ secrets.DOCKERHUB_USERNAME }}/vod2pod-rss:${{ env.VERSION }}-amd64-beta
+          run: docker buildx imagetools create -t ghcr.io/${{ github.repository_owner }}/vod2pod-rss:${{ env.VERSION }}-beta ghcr.io/${{ github.repository_owner }}/vod2pod-rss:${{ env.VERSION }}-armv7-beta ghcr.io/${{ github.repository_owner }}/vod2pod-rss:${{ env.VERSION }}-arm64-beta ghcr.io/${{ github.repository_owner }}/vod2pod-rss:${{ env.VERSION }}-amd64-beta
