@@ -35,7 +35,7 @@
         # Build the VoD2Pod-RSS package
         vod2pod-rss-pkg = pkgs.rustPlatform.buildRustPackage {
           pname = "vod2pod-rss";
-          version = "1.2.5";
+          version = "1.2.6"; # Bump version to force rebuild
 
           src = ./.;
 
