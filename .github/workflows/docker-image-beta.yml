@@ -11,7 +11,7 @@ concurrency: ${{ github.head_ref || github.ref_name }}
 
 jobs:
   push_to_ghcr_amd64:
-      runs-on: ubuntu-latest
+      runs-on: [ self-hosted, nixos, vod2pod ]
       steps:
         - name: checkout repo
           uses: actions/checkout@v6
@@ -45,7 +45,7 @@ jobs:
             build-args: |
               BUILDKIT_INLINE_CACHE=1
   push_to_ghcr_arm64:
-      runs-on: ubuntu-latest
+      runs-on: [ self-hosted, nixos, vod2pod ]
       steps:
         - name: checkout repo
           uses: actions/checkout@v6
@@ -81,7 +81,7 @@ jobs:
             build-args: |
               BUILDKIT_INLINE_CACHE=1
   push_to_ghcr_arm_v7:
-      runs-on: ubuntu-latest
+      runs-on: [ self-hosted, nixos, vod2pod ]
       steps:
         - name: Set Swap Space
           uses: pierotofy/set-swap-space@v1.0
@@ -123,7 +123,7 @@ jobs:
               CARGO_REGISTRIES_CRATES_IO_PROTOCOL=sparse
   merge_tags:
       needs: [push_to_ghcr_arm64, push_to_ghcr_arm_v7, push_to_ghcr_amd64]
-      runs-on: ubuntu-latest
+      runs-on: [ self-hosted, nixos, vod2pod ]
       steps:
         - name: checkout repo
           uses: actions/checkout@v6

@@ -250,7 +250,7 @@ permissions:
 
 jobs:
   auto-merge:
-    runs-on: ubuntu-latest
+    runs-on: [ self-hosted, nixos, vod2pod ]
     if: github.actor == 'dependabot[bot]'
     steps:
       - name: Check if yt-dlp update
@@ -307,7 +307,7 @@ on:
 
 jobs:
   update:
-    runs-on: ubuntu-latest
+    runs-on: [ self-hosted, nixos, vod2pod ]
     steps:
       - uses: actions/checkout@v4
       
@@ -347,7 +347,7 @@ on:
 
 jobs:
   update:
-    runs-on: ubuntu-latest
+    runs-on: [ self-hosted, nixos, vod2pod ]
     steps:
       - uses: actions/checkout@v4
       
