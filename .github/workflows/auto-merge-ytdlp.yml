@@ -17,8 +17,8 @@ jobs:
     if: github.actor == 'dependabot[bot]'
     steps:
       - name: Checkout code
-        uses: actions/checkout@v4
-      
+        uses: actions/checkout@v6
+
       - name: Check if yt-dlp update
         id: check
         run: |
@@ -28,21 +28,21 @@ jobs:
               echo "✓ Detected yt-dlp update"
             fi
           fi
-      
+
       - name: Test yt-dlp version (optional safety check)
         if: steps.check.outputs.is_ytdlp == 'true'
         run: |
           # Install the new yt-dlp version in a temp environment to verify it works
           pip install --dry-run $(grep "yt-dlp==" requirements.txt)
           echo "✓ yt-dlp version validated"
-      
+
       - name: Enable auto-merge for yt-dlp
         if: steps.check.outputs.is_ytdlp == 'true'
         run: |
           gh pr merge --auto --squash "${{ github.event.pull_request.number }}"
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      
+
       - name: Comment on PR
         if: steps.check.outputs.is_ytdlp == 'true'
         run: |
