@@ -111,7 +111,7 @@ impl Transcoder {
     ) -> Gen<Result<Bytes, impl Error>, (), impl Future<Output = ()>> {
         async fn generetor_coroutine(
             mut command: Command,
-            expected_bytes_count: usize,
+            _expected_bytes_count: usize,
             co: Co<Result<Bytes, std::io::Error>>,
         ) {
             let mut child = command
@@ -155,29 +155,17 @@ impl Transcoder {
                 }
             });
 
-            //stdout thread
+            //stdout thread - stream until ffmpeg completes
             std::thread::spawn(move || {
                 const BUFFER_SIZE: usize = 1024;
                 let mut buff: [u8; BUFFER_SIZE] = [0; BUFFER_SIZE];
                 let mut tries = 0;
-                let mut sent_bytes_count: usize = 0;
                 loop {
                     match out.read(&mut buff) {
                         Ok(read_bytes) => {
-                            if sent_bytes_count + read_bytes > expected_bytes_count {
-                                //partial request is fulfilled we only need to send the remaining data
-                                let bytes_remaining = expected_bytes_count - sent_bytes_count;
-                                _ = tx_stdout.blocking_send(Ok(Bytes::copy_from_slice(
-                                    &buff[..bytes_remaining],
-                                )));
-                                info!("transcoded everything in partial request");
-                                _ = child.kill();
-                                _ = child.wait();
-                                break;
-                            }
-
                             if read_bytes == 0 {
-                                info!("transcoded everything");
+                                // EOF - ffmpeg completed successfully
+                                info!("transcoding completed");
                                 _ = child.wait();
                                 break;
                             }
@@ -192,7 +180,7 @@ impl Transcoder {
                                 _ = child.wait();
                                 break;
                             };
-                            sent_bytes_count += read_bytes;
+                            tries = 0; // reset tries on successful read
                         }
                         Err(e) => match e.kind() {
                             std::io::ErrorKind::Interrupted => {

@@ -320,7 +320,8 @@ async fn transcode_to_mp3(req: HttpRequest, query: web::Query<TranscodizeQuery>)
                     format!("bytes {start_bytes}-{end_bytes}/{total_streamable_bytes}"),
                 ))
                 .content_type(codec.get_mime_type_str())
-                .no_chunking((expected_bytes).try_into().unwrap())
+                // Use chunked encoding for better compatibility with podcast clients
+                // Don't set Content-Length since variable bitrate makes it unpredictable
                 .streaming(stream)
         }
         Err(e) => HttpResponse::ServiceUnavailable().body(e.to_string()),
