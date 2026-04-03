@@ -7,6 +7,10 @@ on:
 
 concurrency: ${{ github.head_ref || github.ref_name }}
 
+env:
+  # Opt into Node.js 24 for GitHub Actions
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+
 jobs:
   cargo_version_bump:
     runs-on: [ self-hosted, nixos, vod2pod ]
@@ -59,12 +63,9 @@ jobs:
             context: ./
             dockerfiles: ./Dockerfile
             platforms: linux/amd64
-            build-args: |
-              BUILDKIT_INLINE_CACHE=1
-            cache-from: type=gha,scope=main-amd64
-            cache-to: type=gha,mode=max,scope=main-amd64
+            extra-args: --cache-from=type=gha,scope=main-amd64 --cache-to=type=gha,mode=max,scope=main-amd64
         - name: Push to GHCR
-          uses: redhat-actions/push-to-registry@v2.7.1
+          uses: redhat-actions/push-to-registry@v2
           with:
             image: vod2pod-rss
             tags: ${{ env.VERSION }}-amd64
@@ -94,12 +95,9 @@ jobs:
             context: ./
             dockerfiles: ./Dockerfile
             platforms: linux/arm64
-            build-args: |
-              BUILDKIT_INLINE_CACHE=1
-            cache-from: type=gha,scope=main-arm64
-            cache-to: type=gha,mode=max,scope=main-arm64
+            extra-args: --cache-from=type=gha,scope=main-arm64 --cache-to=type=gha,mode=max,scope=main-arm64
         - name: Push to GHCR
-          uses: redhat-actions/push-to-registry@v2.7.1
+          uses: redhat-actions/push-to-registry@v2
           with:
             image: vod2pod-rss
             tags: ${{ env.VERSION }}-arm64
@@ -133,13 +131,9 @@ jobs:
             context: ./
             dockerfiles: ./Dockerfile
             platforms: linux/arm/v7
-            build-args: |
-              BUILDKIT_INLINE_CACHE=1
-              CARGO_REGISTRIES_CRATES_IO_PROTOCOL=sparse
-            cache-from: type=gha,scope=main-armv7
-            cache-to: type=gha,mode=max,scope=main-armv7
+            extra-args: --cache-from=type=gha,scope=main-armv7 --cache-to=type=gha,mode=max,scope=main-armv7
         - name: Push to GHCR
-          uses: redhat-actions/push-to-registry@v2.7.1
+          uses: redhat-actions/push-to-registry@v2
           with:
             image: vod2pod-rss
             tags: ${{ env.VERSION }}-armv7
