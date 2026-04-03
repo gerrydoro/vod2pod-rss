@@ -249,7 +249,8 @@ mod test {
         let ppath = transcoder.ffmpeg_command.get_program();
         if let Some(x) = ppath.to_str() {
             info!("{} ", x);
-            assert_eq!(x, "ffmpeg");
+            // Use ends_with to handle Nix store paths like /nix/store/.../bin/ffmpeg
+            assert!(x.ends_with("ffmpeg") || x == "ffmpeg", "ffmpeg path should end with 'ffmpeg', got: {}", x);
         }
         let mut args = transcoder.ffmpeg_command.get_args();
 
