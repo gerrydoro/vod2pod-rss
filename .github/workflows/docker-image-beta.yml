@@ -36,7 +36,7 @@ jobs:
             context: ./
             dockerfiles: ./Dockerfile
             platforms: linux/amd64
-            extra-args: --cache-from=type=gha,scope=main-amd64 --cache-to=type=gha,mode=max,scope=main-amd64
+            
         - name: Push to GHCR
           uses: redhat-actions/push-to-registry@v2
           with:
@@ -67,7 +67,7 @@ jobs:
             context: ./
             dockerfiles: ./Dockerfile
             platforms: linux/arm64
-            extra-args: --cache-from=type=gha,scope=main-arm64 --cache-to=type=gha,mode=max,scope=main-arm64
+            
         - name: Push to GHCR
           uses: redhat-actions/push-to-registry@v2
           with:
@@ -102,7 +102,7 @@ jobs:
             context: ./
             dockerfiles: ./Dockerfile
             platforms: linux/arm/v7
-            extra-args: --cache-from=type=gha,scope=main-armv7 --cache-to=type=gha,mode=max,scope=main-armv7
+            
         - name: Push to GHCR
           uses: redhat-actions/push-to-registry@v2
           with:

@@ -35,12 +35,8 @@ jobs:
 
     steps:
       - uses: actions/checkout@v6
-      - uses: Swatinem/rust-cache@v2
       - name: Build
         run: nix develop -c cargo build --verbose
-        shell: bash
-      - name: Install ffmpeg and redis
-        run: nix shell nixpkgs#ffmpeg nixpkgs#redis -c echo "Dependencies available"
         shell: bash
       - name: Start Redis server
         run: |
