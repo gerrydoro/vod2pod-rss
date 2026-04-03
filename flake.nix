@@ -100,6 +100,8 @@
             cargo
             rustfmt
             clippy
+            clippy-sarif
+            sarif-fmt
             openssl
             pkg-config
             perl

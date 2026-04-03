@@ -291,6 +291,10 @@ mod test {
                 Some("pipe:stdout") => {
                     info!("pipe:stdout");
                 }
+                Some("pipe:1") => {
+                    // Output to stdout via pipe
+                    info!("pipe:1");
+                }
                 Some("-timeout") => {
                     let value = args.next().unwrap().to_str().unwrap();
                     info!("-timeout {}", value);
