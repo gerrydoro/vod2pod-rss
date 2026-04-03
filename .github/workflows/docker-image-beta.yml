@@ -24,26 +24,26 @@ jobs:
           run: |
             sh .github/workflows/remove_dev_deps_and_version.sh beta
           shell: bash
-        - name: Set up Docker Buildx
-          uses: docker/setup-buildx-action@v3
-        - name: Login to GHCR
-          uses: docker/login-action@v3
+        - name: Build with Buildah
+          uses: redhat-actions/buildah-build@v2
           with:
-            registry: ghcr.io
-            username: ${{ github.actor }}
-            password: ${{ secrets.GITHUB_TOKEN }}
-        - name: Build and push
-          uses: docker/build-push-action@v6
-          with:
+            image: vod2pod-rss
+            tags: ${{ env.VERSION }}-amd64-beta
             context: ./
-            file: ./Dockerfile
-            push: true
-            tags: ghcr.io/${{ github.repository_owner }}/vod2pod-rss:${{ env.VERSION }}-amd64-beta
+            dockerfiles: ./Dockerfile
             platforms: linux/amd64
-            cache-from: type=gha,scope=main-amd64
-            cache-to: type=gha,mode=max,scope=main-amd64
             build-args: |
               BUILDKIT_INLINE_CACHE=1
+            cache-from: type=gha,scope=main-amd64
+            cache-to: type=gha,mode=max,scope=main-amd64
+        - name: Push to GHCR
+          uses: redhat-actions/push-to-registry@v2.7.1
+          with:
+            image: vod2pod-rss
+            tags: ${{ env.VERSION }}-amd64-beta
+            registry: ghcr.io/${{ github.repository_owner }}
+            username: ${{ github.actor }}
+            password: ${{ secrets.GITHUB_TOKEN }}
   push_to_ghcr_arm64:
       runs-on: [ self-hosted, nixos, vod2pod ]
       steps:
@@ -58,28 +58,26 @@ jobs:
           run: |
             sh .github/workflows/remove_dev_deps_and_version.sh beta
           shell: bash
-        - name: Set up QEMU
-          uses: docker/setup-qemu-action@v3
-        - name: Set up Docker Buildx
-          uses: docker/setup-buildx-action@v3
-        - name: Login to GHCR
-          uses: docker/login-action@v3
+        - name: Build with Buildah
+          uses: redhat-actions/buildah-build@v2
           with:
-            registry: ghcr.io
-            username: ${{ github.actor }}
-            password: ${{ secrets.GITHUB_TOKEN }}
-        - name: Build and push
-          uses: docker/build-push-action@v6
-          with:
+            image: vod2pod-rss
+            tags: ${{ env.VERSION }}-arm64-beta
             context: ./
-            file: ./Dockerfile
-            push: true
-            tags: ghcr.io/${{ github.repository_owner }}/vod2pod-rss:${{ env.VERSION }}-arm64-beta
+            dockerfiles: ./Dockerfile
             platforms: linux/arm64
-            cache-from: type=gha,scope=main-arm64
-            cache-to: type=gha,mode=max,scope=main-arm64
             build-args: |
               BUILDKIT_INLINE_CACHE=1
+            cache-from: type=gha,scope=main-arm64
+            cache-to: type=gha,mode=max,scope=main-arm64
+        - name: Push to GHCR
+          uses: redhat-actions/push-to-registry@v2.7.1
+          with:
+            image: vod2pod-rss
+            tags: ${{ env.VERSION }}-arm64-beta
+            registry: ghcr.io/${{ github.repository_owner }}
+            username: ${{ github.actor }}
+            password: ${{ secrets.GITHUB_TOKEN }}
   push_to_ghcr_arm_v7:
       runs-on: [ self-hosted, nixos, vod2pod ]
       steps:
@@ -98,29 +96,27 @@ jobs:
           run: |
             sh .github/workflows/remove_dev_deps_and_version.sh beta
           shell: bash
-        - name: Set up QEMU
-          uses: docker/setup-qemu-action@v3
-        - name: Set up Docker Buildx
-          uses: docker/setup-buildx-action@v3
-        - name: Login to GHCR
-          uses: docker/login-action@v3
+        - name: Build with Buildah
+          uses: redhat-actions/buildah-build@v2
           with:
-            registry: ghcr.io
-            username: ${{ github.actor }}
-            password: ${{ secrets.GITHUB_TOKEN }}
-        - name: Build and push
-          uses: docker/build-push-action@v6
-          with:
+            image: vod2pod-rss
+            tags: ${{ env.VERSION }}-armv7-beta
             context: ./
-            file: ./Dockerfile
-            push: true
-            tags: ghcr.io/${{ github.repository_owner }}/vod2pod-rss:${{ env.VERSION }}-armv7-beta
+            dockerfiles: ./Dockerfile
             platforms: linux/arm/v7
-            cache-from: type=gha,scope=main-armv7
-            cache-to: type=gha,mode=max,scope=main-armv7
             build-args: |
               BUILDKIT_INLINE_CACHE=1
               CARGO_REGISTRIES_CRATES_IO_PROTOCOL=sparse
+            cache-from: type=gha,scope=main-armv7
+            cache-to: type=gha,mode=max,scope=main-armv7
+        - name: Push to GHCR
+          uses: redhat-actions/push-to-registry@v2.7.1
+          with:
+            image: vod2pod-rss
+            tags: ${{ env.VERSION }}-armv7-beta
+            registry: ghcr.io/${{ github.repository_owner }}
+            username: ${{ github.actor }}
+            password: ${{ secrets.GITHUB_TOKEN }}
   merge_tags:
       needs: [push_to_ghcr_arm64, push_to_ghcr_arm_v7, push_to_ghcr_amd64]
       runs-on: [ self-hosted, nixos, vod2pod ]
@@ -132,13 +128,23 @@ jobs:
             # Get the current version
             VERSION=$(grep -oP '^version = "\K[0-9]+\.[0-9]+\.[0-9]+' Cargo.toml)
             echo "VERSION=${VERSION}" >> $GITHUB_ENV
-        - name: Login to GHCR
-          uses: docker/login-action@v3
+        - name: Login to GHCR with Podman
+          uses: redhat-actions/podman-login@v1
           with:
             registry: ghcr.io
             username: ${{ github.actor }}
             password: ${{ secrets.GITHUB_TOKEN }}
-        - name: merge into version
-          run: docker buildx imagetools create -t ghcr.io/${{ github.repository_owner }}/vod2pod-rss:beta ghcr.io/${{ github.repository_owner }}/vod2pod-rss:${{ env.VERSION }}-armv7-beta ghcr.io/${{ github.repository_owner }}/vod2pod-rss:${{ env.VERSION }}-arm64-beta ghcr.io/${{ github.repository_owner }}/vod2pod-rss:${{ env.VERSION }}-amd64-beta
-        - name: merge into version
-          run: docker buildx imagetools create -t ghcr.io/${{ github.repository_owner }}/vod2pod-rss:${{ env.VERSION }}-beta ghcr.io/${{ github.repository_owner }}/vod2pod-rss:${{ env.VERSION }}-armv7-beta ghcr.io/${{ github.repository_owner }}/vod2pod-rss:${{ env.VERSION }}-arm64-beta ghcr.io/${{ github.repository_owner }}/vod2pod-rss:${{ env.VERSION }}-amd64-beta
+        - name: Create manifest for beta
+          run: |
+            podman manifest create vod2pod-rss:beta
+            podman manifest add vod2pod-rss:beta ghcr.io/${{ github.repository_owner }}/vod2pod-rss:${{ env.VERSION }}-amd64-beta
+            podman manifest add vod2pod-rss:beta ghcr.io/${{ github.repository_owner }}/vod2pod-rss:${{ env.VERSION }}-arm64-beta
+            podman manifest add vod2pod-rss:beta ghcr.io/${{ github.repository_owner }}/vod2pod-rss:${{ env.VERSION }}-armv7-beta
+            podman manifest push vod2pod-rss:beta ghcr.io/${{ github.repository_owner }}/vod2pod-rss:beta
+        - name: Create manifest for version-beta
+          run: |
+            podman manifest create vod2pod-rss:${{ env.VERSION }}-beta
+            podman manifest add vod2pod-rss:${{ env.VERSION }}-beta ghcr.io/${{ github.repository_owner }}/vod2pod-rss:${{ env.VERSION }}-amd64-beta
+            podman manifest add vod2pod-rss:${{ env.VERSION }}-beta ghcr.io/${{ github.repository_owner }}/vod2pod-rss:${{ env.VERSION }}-arm64-beta
+            podman manifest add vod2pod-rss:${{ env.VERSION }}-beta ghcr.io/${{ github.repository_owner }}/vod2pod-rss:${{ env.VERSION }}-armv7-beta
+            podman manifest push vod2pod-rss:${{ env.VERSION }}-beta ghcr.io/${{ github.repository_owner }}/vod2pod-rss:${{ env.VERSION }}-beta
