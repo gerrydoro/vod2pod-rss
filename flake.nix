@@ -102,6 +102,7 @@
             clippy
             openssl
             pkg-config
+            perl
             ffmpeg
             yt-dlp
             deno
