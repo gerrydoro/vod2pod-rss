@@ -295,10 +295,6 @@ async fn transcode_to_mp3(req: HttpRequest, query: web::Query<TranscodizeQuery>)
     if req.method() == http::Method::HEAD {
         return HttpResponse::Ok()
             .insert_header(("Accept-Ranges", "bytes"))
-            .insert_header((
-                "Content-Range",
-                format!("bytes {start_bytes}-{end_bytes}/{total_streamable_bytes}"),
-            ))
             .content_type(codec.get_mime_type_str())
             .finish();
     }
