@@ -66,8 +66,12 @@ pub fn inject_vod2pod_customizations(
                     .append_pair("url", item.link().ok_or(eyre!("not url found in item"))?)
                     .append_pair("ext", ext.as_str()); //this should allways be last, some players refuse to play urls not ending in .mp3
 
+                // Calculate expected file size: bitrate is in kbit/s, so:
+                // size_bytes = (bitrate_kbit * 1000 * duration_secs) / 8
+                let size_bytes = (bitrate as u64 * 1000 * duration_secs) / 8;
+
                 let enclosure = Enclosure {
-                    length: (bitrate * 1024 * duration_secs).to_string(),
+                    length: size_bytes.to_string(),
                     url: transcode_service_url.to_string(),
                     mime_type: "audio/mpeg".to_string(),
                 };

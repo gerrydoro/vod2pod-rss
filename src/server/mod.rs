@@ -307,22 +307,27 @@ async fn transcode_to_mp3(req: HttpRequest, query: web::Query<TranscodizeQuery>)
         Ok(transcoder) => {
             let stream = transcoder.get_transcode_stream();
 
-            let mut response_builder = if ffmpeg_paramenters.seek_time <= 0.1 {
+            if ffmpeg_paramenters.seek_time <= 0.1 {
+                // Full content - use 200 OK without Content-Range
                 HttpResponse::Ok()
+                    .insert_header(("Accept-Ranges", "bytes"))
+                    .content_type(codec.get_mime_type_str())
+                    // Use chunked encoding for better compatibility with podcast clients
+                    // Don't set Content-Length since variable bitrate makes it unpredictable
+                    .streaming(stream)
             } else {
+                // Partial content - use 206 with Content-Range
                 HttpResponse::PartialContent()
-            };
-
-            response_builder
-                .insert_header(("Accept-Ranges", "bytes"))
-                .insert_header((
-                    "Content-Range",
-                    format!("bytes {start_bytes}-{end_bytes}/{total_streamable_bytes}"),
-                ))
-                .content_type(codec.get_mime_type_str())
-                // Use chunked encoding for better compatibility with podcast clients
-                // Don't set Content-Length since variable bitrate makes it unpredictable
-                .streaming(stream)
+                    .insert_header(("Accept-Ranges", "bytes"))
+                    .insert_header((
+                        "Content-Range",
+                        format!("bytes {start_bytes}-{end_bytes}/{total_streamable_bytes}"),
+                    ))
+                    .content_type(codec.get_mime_type_str())
+                    // Use chunked encoding for better compatibility with podcast clients
+                    // Don't set Content-Length since variable bitrate makes it unpredictable
+                    .streaming(stream)
+            }
         }
         Err(e) => HttpResponse::ServiceUnavailable().body(e.to_string()),
     }
