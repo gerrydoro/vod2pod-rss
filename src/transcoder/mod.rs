@@ -109,6 +109,7 @@ impl Transcoder {
     pub fn get_transcode_stream(
         self,
     ) -> Gen<Result<Bytes, impl Error>, (), impl Future<Output = ()>> {
+        #[allow(clippy::zombie_processes)]
         async fn generetor_coroutine(
             mut command: Command,
             _expected_bytes_count: usize,
@@ -141,15 +142,12 @@ impl Transcoder {
                     }
                     Ok(_) => {
                         error!("{}", buf);
-                        let _ = tx_stderr.blocking_send(Err(std::io::Error::new(
-                            std::io::ErrorKind::Other,
-                            buf,
-                        )));
+                        let _ = tx_stderr.blocking_send(Err(std::io::Error::other(buf)));
                     }
                     Err(e) => {
                         error!("failed to read from stderr: {}", e);
                         let _ = tx_stderr
-                            .blocking_send(Err(std::io::Error::new(std::io::ErrorKind::Other, e)));
+                            .blocking_send(Err(std::io::Error::other(e)));
                         break;
                     }
                 }

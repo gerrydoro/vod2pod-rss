@@ -30,7 +30,7 @@ impl MediaProvider for TwitchProvider {
         let username = channel_url
             .path_segments()
             .ok_or_else(|| eyre::eyre!("Unable to get path segments"))?
-            .last()
+            .next_back()
             .ok_or_else(|| eyre::eyre!("Unable to get last path segment"))?;
 
         debug!("parsed username {}", username);
@@ -236,7 +236,7 @@ async fn get_twitch_stream_url(url: &Url) -> eyre::Result<Url> {
                     warn!(
                         "error while parsing stream url:\ninput: {}\nerror: {}",
                         raw_url,
-                        e.to_string()
+                        e
                     );
                     Err(eyre::eyre!(e))
                 }

@@ -64,7 +64,7 @@ impl MediaProvider for YoutubeProvider {
                         || path.starts_with("/@") =>
                     {
                         let url = find_yt_channel_url_with_c_id(&channel_url).await?;
-                        let channel_id = url.path_segments().unwrap().last().unwrap();
+                        let channel_id = url.path_segments().unwrap().next_back().unwrap();
                         IdType::Channel(channel_id.into())
                     }
                     _ => return Err(eyre!("unsupported youtube url")),
@@ -276,7 +276,7 @@ async fn create_duration_url_map(
         for video_id in batch {
             video_info_request = video_info_request.add_id(&video_id);
         }
-        return video_info_request.doit();
+        video_info_request.doit()
     });
 
     info!(
@@ -357,8 +357,8 @@ fn build_channel_items_from_playlist(
 }
 
 async fn fetch_playlist_items(
-    playlist_id: &String,
-    api_key: &String,
+    playlist_id: &str,
+    api_key: &str,
     max_fetched_items: usize,
 ) -> eyre::Result<Vec<PlaylistItem>> {
     let hub = get_youtube_hub();
@@ -435,7 +435,7 @@ fn build_channel_from_playlist(playlist: api::Playlist) -> Channel {
     channel_builder.build()
 }
 
-async fn fetch_playlist(id: String, api_key: &String) -> Result<api::Playlist, eyre::Error> {
+async fn fetch_playlist(id: String, api_key: &str) -> Result<api::Playlist, eyre::Error> {
     let hub = get_youtube_hub();
     let playlist_request = hub
         .playlists()
@@ -551,7 +551,7 @@ async fn get_youtube_stream_url(url: &Url) -> eyre::Result<Url> {
                     Err(e) => {
                         warn!(
                             "error while parsing stream url using yt-dlp:\nerror: {}\nyt-dlp stdout: {}\nyt-dlp stderr: {}",
-                            e.to_string(),
+                            e,
                             raw_url,
                             stderr
                         );
@@ -588,7 +588,7 @@ async fn feed_url_for_yt_channel(url: &Url) -> eyre::Result<Url> {
         return Ok(url.to_owned());
     }
     let url_with_channel_id = find_yt_channel_url_with_c_id(url).await?;
-    let channel_id = url_with_channel_id.path_segments().unwrap().last().unwrap();
+    let channel_id = url_with_channel_id.path_segments().unwrap().next_back().unwrap();
     let mut feed_url = Url::parse("https://www.youtube.com/feeds/videos.xml")?;
     feed_url
         .query_pairs_mut()
@@ -628,7 +628,7 @@ async fn find_yt_channel_url_with_c_id(url: &Url) -> eyre::Result<Url> {
         Err(e) => {
             warn!(
                         "error while translating channel name using yt-dlp:\nerror: {}\nyt-dlp stdout: {}\nyt-dlp stderr: {}",
-                        e.to_string(),
+                        e,
                         conversion.unwrap_or_default(),
                         std::str::from_utf8(&output.stderr).unwrap_or_default()
                     );
