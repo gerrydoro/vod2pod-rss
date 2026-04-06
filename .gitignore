@@ -14,3 +14,6 @@ devcontainerInstall.log
 .vscode/settings.json
 result
 .temp
+
+.gemini/
+gha-creds-*.json
