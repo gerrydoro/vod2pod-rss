@@ -138,14 +138,8 @@ impl AudioCodec {
     pub fn get_ffmpeg_codec_str(&self) -> &'static str {
         match self {
             AudioCodec::MP3 => "libmp3lame",
-            AudioCodec::Opus => {
-                warn!("seeking is not supported with OPUS codec  ");
-                "libopus"
-            }
-            AudioCodec::OGGVorbis => {
-                warn!("seeking is not supported with OGG_VORBIS codec ... ");
-                "libvorbis"
-            }
+            AudioCodec::Opus => "libopus",
+            AudioCodec::OGGVorbis => "libvorbis",
         }
     }
 
