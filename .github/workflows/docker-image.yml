@@ -5,6 +5,10 @@ on:
   # Allows you to run this workflow manually from the Actions tab
   workflow_dispatch:
 
+permissions:
+  contents: write
+  packages: write
+
 concurrency: ${{ github.head_ref || github.ref_name }}
 
 env:
@@ -12,6 +16,8 @@ env:
 
 jobs:
   cargo_version_bump:
+    permissions:
+      contents: write
     runs-on: [ self-hosted, nixos, vod2pod ]
     steps:
       - uses: actions/checkout@v6
@@ -38,6 +44,9 @@ jobs:
 
   push_to_ghcr_amd64:
       needs: cargo_version_bump
+      permissions:
+        contents: read
+        packages: write
       runs-on: [ self-hosted, nixos, vod2pod ]
       steps:
         - name: checkout repo
@@ -71,6 +80,9 @@ jobs:
               BUILDKIT_INLINE_CACHE=1
   push_to_ghcr_arm64:
       needs: cargo_version_bump
+      permissions:
+        contents: read
+        packages: write
       runs-on: [ self-hosted, nixos, vod2pod ]
       steps:
         - name: checkout repo
@@ -106,6 +118,9 @@ jobs:
               BUILDKIT_INLINE_CACHE=1
   push_to_ghcr_arm_v7:
       needs: cargo_version_bump
+      permissions:
+        contents: read
+        packages: write
       runs-on: [ self-hosted, nixos, vod2pod ]
       steps:
         - name: Set Swap Space
@@ -145,6 +160,9 @@ jobs:
               BUILDKIT_INLINE_CACHE=1
   merge_tags:
       needs: [push_to_ghcr_arm64, push_to_ghcr_arm_v7, push_to_ghcr_amd64]
+      permissions:
+        contents: read
+        packages: write
       runs-on: [ self-hosted, nixos, vod2pod ]
       steps:
         - name: checkout repo

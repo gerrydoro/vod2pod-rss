@@ -26,14 +26,14 @@ pub struct TwitchProvider;
 #[async_trait]
 impl MediaProvider for TwitchProvider {
     async fn generate_rss_feed(&self, channel_url: Url) -> eyre::Result<String> {
-        info!("trying to convert twitch channel url {}", channel_url);
+        debug!("trying to convert twitch channel url to rss feed");
         let username = channel_url
             .path_segments()
             .ok_or_else(|| eyre::eyre!("Unable to get path segments"))?
             .next_back()
             .ok_or_else(|| eyre::eyre!("Unable to get last path segment"))?;
 
-        debug!("parsed username {}", username);
+        debug!("parsed twitch channel username");
 
         let client_id = &conf().get(ConfName::TwitchClientId)?;
         let client_secret = &conf().get(ConfName::TwitchSecretKey)?;
@@ -43,10 +43,8 @@ impl MediaProvider for TwitchProvider {
         // add bearer token to request
         let client = reqwest::Client::new();
         let channels = client
-            .get(format!(
-                "https://api.twitch.tv/helix/users?login={}",
-                username
-            ))
+            .get("https://api.twitch.tv/helix/users")
+            .query(&[("login", username)])
             .bearer_auth(oauth_token.clone())
             .header("Client-Id", client_id)
             .send()
@@ -219,7 +217,8 @@ struct VodsData {
 
 async fn get_twitch_stream_url(url: &Url) -> eyre::Result<Url> {
     debug!("getting stream_url for twitch video: {}", url);
-    let output = tokio::process::Command::new("yt-dlp")
+    let yt_dlp_path = std::env::var("YT_DLP_PATH").unwrap_or_else(|_| "yt-dlp".to_string());
+    let output = tokio::process::Command::new(yt_dlp_path)
         .arg("-f")
         .arg("bestaudio")
         .arg("--get-url")
@@ -291,11 +290,7 @@ async fn authorize(client_id: &str, client_secret: &str) -> eyre::Result<OAuthCr
         if cached_credential.oauth_expire_epoch
             > SystemTime::now().duration_since(UNIX_EPOCH)?.as_secs()
         {
-            info!(
-                "using cached twitch oauth credentials, expires in {} seconds",
-                cached_credential.oauth_expire_epoch
-                    - SystemTime::now().duration_since(UNIX_EPOCH)?.as_secs()
-            );
+            info!("using cached twitch oauth credentials");
             return Ok(cached_credential);
         }
     }
@@ -337,11 +332,7 @@ async fn authorize(client_id: &str, client_secret: &str) -> eyre::Result<OAuthCr
                 .query_async(&mut redis)
                 .await?;
 
-            info!(
-                "got new twitch oauth credentials, expires in {} seconds",
-                oauth_credentials.oauth_expire_epoch
-                    - SystemTime::now().duration_since(UNIX_EPOCH)?.as_secs()
-            );
+            info!("got new twitch oauth credentials");
 
             return Ok(oauth_credentials);
         }

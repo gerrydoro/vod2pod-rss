@@ -30,7 +30,7 @@ impl MediaProvider for PeerTubeProvider {
     async fn get_stream_url(&self, media_url: &Url) -> eyre::Result<Url> {
         let video_url = find_api_url(media_url).await?;
 
-        let response = reqwest::get(video_url).await?;
+        let response = reqwest::Client::new().get(video_url).send().await?;
         let video: Video = response.json().await?;
 
         Ok(video.streamingPlaylists[0].playlistUrl.clone())

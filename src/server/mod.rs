@@ -54,17 +54,8 @@ async fn health() -> HttpResponse {
 }
 
 async fn index(req: HttpRequest) -> HttpResponse {
-    if let (Some(user_agent), Some(remote_addr), Some(referer)) = (
-        req.headers().get("User-Agent"),
-        req.connection_info().peer_addr(),
-        req.headers().get("Referer"),
-    ) {
-        info!(
-            "serving homepage - User-Agent: {}, Remote Address: {}, Referer: {}",
-            user_agent.to_str().unwrap(),
-            remote_addr,
-            referer.to_str().unwrap()
-        );
+    if req.headers().get("User-Agent").is_some() {
+        debug!("serving homepage");
     }
 
     let html = std::fs::read_to_string("./templates/index.html").unwrap();
@@ -95,7 +86,9 @@ async fn transcodize_rss(
         return HttpResponse::BadRequest().finish();
     };
 
-    let transcode_service_url = req.url_for("transcode_mp3", [""]).unwrap();
+    // Build transcode service URL using configured subfolder path (constant-bounded)
+    let subfolder = conf().get(ConfName::SubfolderPath).unwrap_or_else(|_| "/".to_string());
+    let transcode_service_url = Url::parse(&format!("{}transcode_media/to.mp3", subfolder.trim_end_matches('/'))).expect("valid transcode service URL");
 
     let parsed_url = match Url::parse(url) {
         Ok(x) => x,
@@ -190,6 +183,21 @@ fn parse_range_header(
     content_range_str: &str,
     bytes_count: usize,
 ) -> eyre::Result<(usize, usize, usize)> {
+    // Guard against unreasonably large values that could cause overflow or DoS
+    const MAX_RANGE_BYTES: usize = 10 * 1024 * 1024 * 1024; // 10 GiB
+    if bytes_count > MAX_RANGE_BYTES {
+        return Err(eyre::eyre!(
+            "requested range exceeds maximum allowed size ({} bytes)",
+            MAX_RANGE_BYTES
+        ));
+    }
+    if bytes_count == 0 {
+        error!("The requested Range header with a length of 0 is invalid: {content_range_str}");
+        return Err(eyre::eyre!(
+            "The requested Range header with a length of 0 is invalid: {content_range_str}"
+        ));
+    }
+
     let re = Regex::new(r"(?P<start>[0-9]{1,20})-?(?P<end>[0-9]{1,20})?")?;
     let captures = if let Some(x) = re.captures_iter(content_range_str).next() {
         x
@@ -197,29 +205,34 @@ fn parse_range_header(
         return Err(eyre::eyre!("content range regex failed"));
     };
 
-    let mut start = 0;
+    let mut start: usize = 0;
     if let Some(x) = captures.name("start") {
         start = x.as_str().parse()?;
     }
 
-    if bytes_count == 0 {
-        error!("The requested Rage header with a length of 0 is invalid: {content_range_str}");
-        return Err(eyre::eyre!(
-            "The requested Rage header with a length of 0 is invalid: {content_range_str}"
-        ));
-    }
-    let mut end = bytes_count - 1;
+    let mut end: usize = bytes_count.saturating_sub(1);
     if let Some(x) = captures.name("end") {
         end = x.as_str().parse()?;
     }
 
-    if end == start {
+    // Guard against overflow
+    let expected = end
+        .checked_sub(start)
+        .and_then(|diff| diff.checked_add(1))
+        .ok_or_else(|| eyre::eyre!("range overflow: start={start}, end={end}"))?;
+
+    if expected > MAX_RANGE_BYTES {
         return Err(eyre::eyre!(
-            "The requested Rage header with a length of 0 is invalid: {content_range_str}"
+            "requested range exceeds maximum allowed size ({} bytes)",
+            MAX_RANGE_BYTES
         ));
     }
 
-    let expected = (end + 1) - start;
+    if end == start {
+        return Err(eyre::eyre!(
+            "The requested Range header with a length of 0 is invalid: {content_range_str}"
+        ));
+    }
 
     Ok((start, end, expected))
 }
@@ -228,17 +241,24 @@ async fn transcode_to_mp3(req: HttpRequest, query: web::Query<TranscodizeQuery>)
     let stream_url = &query.url;
     let bitrate = query.bitrate;
     let duration_secs = query.duration;
+    
+    // Validate URL for command injection
+    if stream_url.as_str().contains("|") || stream_url.as_str().contains(";") || stream_url.as_str().contains("&") || stream_url.as_str().contains("`") || stream_url.as_str().contains("$(") {
+        error!("URL contains potentially dangerous characters");
+        return HttpResponse::BadRequest().body("invalid URL");
+    }
+    
     let total_streamable_bytes = (duration_secs * bitrate * 1000) / 8;
     info!("processing transcode at {bitrate}k for {stream_url}");
-
+    
     if let Ok(value) = conf().get(ConfName::TranscodingEnabled) {
         if value.eq_ignore_ascii_case("false") {
             return HttpResponse::Forbidden().finish();
         }
     }
-
+    
     let provider = provider::from(stream_url);
-
+    
     if !provider
         .domain_whitelist_regexes()
         .iter()
