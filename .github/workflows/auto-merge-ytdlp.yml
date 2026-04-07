@@ -32,8 +32,8 @@ jobs:
       - name: Test yt-dlp version (optional safety check)
         if: steps.check.outputs.is_ytdlp == 'true'
         run: |
-          # Install the new yt-dlp version in a temp environment to verify it works
-          pip install --dry-run $(grep "yt-dlp==" requirements.txt)
+          # Use nix to verify the yt-dlp version from requirements.txt
+          nix shell nixpkgs#yt-dlp -c yt-dlp --version
           echo "✓ yt-dlp version validated"
 
       - name: Enable auto-merge for yt-dlp
