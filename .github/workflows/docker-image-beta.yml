@@ -14,7 +14,7 @@ env:
 
 jobs:
   push_to_ghcr_amd64:
-      runs-on: ubuntu-latest
+      runs-on: [ self-hosted, nixos, vod2pod ]
       steps:
         - name: checkout repo
           uses: actions/checkout@v6
@@ -46,7 +46,7 @@ jobs:
             build-args: |
               BUILDKIT_INLINE_CACHE=1
   push_to_ghcr_arm64:
-      runs-on: ubuntu-latest
+      runs-on: [ self-hosted, nixos, vod2pod ]
       steps:
         - name: checkout repo
           uses: actions/checkout@v6
@@ -80,7 +80,7 @@ jobs:
             build-args: |
               BUILDKIT_INLINE_CACHE=1
   push_to_ghcr_arm_v7:
-      runs-on: ubuntu-latest
+      runs-on: [ self-hosted, nixos, vod2pod ]
       steps:
         - name: Set Swap Space
           uses: pierotofy/set-swap-space@v1.0
