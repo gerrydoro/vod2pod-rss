@@ -86,9 +86,18 @@ async fn transcodize_rss(
         return HttpResponse::BadRequest().finish();
     };
 
-    // Build transcode service URL using configured subfolder path (constant-bounded)
+    // Build transcode service URL using request connection info and configured subfolder path
     let subfolder = conf().get(ConfName::SubfolderPath).unwrap_or_else(|_| "/".to_string());
-    let transcode_service_url = Url::parse(&format!("{}transcode_media/to.mp3", subfolder.trim_end_matches('/'))).expect("valid transcode service URL");
+    let conn_info = req.connection_info();
+    let scheme = conn_info.scheme();
+    let host = conn_info.host();
+    let transcode_service_url = Url::parse(&format!(
+        "{}://{}{}/transcode_media/to.mp3",
+        scheme,
+        host,
+        subfolder.trim_end_matches('/')
+    ))
+    .expect("valid transcode service URL");
 
     let parsed_url = match Url::parse(url) {
         Ok(x) => x,

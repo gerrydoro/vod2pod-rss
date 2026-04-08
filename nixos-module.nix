@@ -208,7 +208,7 @@ in
         # Environment - PATH must include ffmpeg and yt-dlp for child processes
         Environment = [
           "PORT=${toString cfg.port}"
-          "PATH=${pkgs.ffmpeg}/bin:${pkgs.yt-dlp}/bin:${pkgs.deno}/bin:/nix/store/d4c56s8wa6rz2dnw6ridg7r1dvax1gky-gnugrep-3.12/bin:/nix/store/0zqnw11n1hk8mflzzvrz7sv1rm1cbnp8-gnused-4.9/bin:/nix/store/wkkwxc04gdw6b263l1h29pjarjnjdyb6-coreutils-9.8/bin:/run/wrappers/bin"
+          "PATH=${pkgs.ffmpeg}/bin:${pkgs.yt-dlp}/bin:${pkgs.deno}/bin:${pkgs.gnugrep}/bin:${pkgs.gnused}/bin:${pkgs.coreutils}/bin:/run/wrappers/bin"
           "TRANSCODE=${if cfg.settings.transcode then "true" else "false"}"
           "MP3_BITRATE=${toString cfg.settings.mp3Bitrate}"
           "SUBFOLDER=${cfg.settings.subfolder}"

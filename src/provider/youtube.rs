@@ -494,7 +494,9 @@ async fn get_youtube_stream_url(url: &Url) -> eyre::Result<Url> {
         _ => "m4a", // Default to m4a for best quality (AAC)
     };
     
-    let mut command = tokio::process::Command::new("/nix/store/5zmsxppz03h1b2x2563jwqv60hfjsbjr-yt-dlp-2026.03.03/bin/yt-dlp");
+    let yt_dlp_path = std::env::var("YT_DLP_PATH").unwrap_or_else(|_| "yt-dlp".to_string());
+
+    let mut command = tokio::process::Command::new(&yt_dlp_path);
     
     if use_best_quality {
         // Use best audio format with specific container
@@ -527,7 +529,7 @@ async fn get_youtube_stream_url(url: &Url) -> eyre::Result<Url> {
             // If format selection failed, fall back to bestaudio
             if stderr.contains("Requested format is not available") {
                 warn!("Requested format not available, falling back to bestaudio");
-                let mut fallback_command = tokio::process::Command::new("/nix/store/5zmsxppz03h1b2x2563jwqv60hfjsbjr-yt-dlp-2026.03.03/bin/yt-dlp");
+                let mut fallback_command = tokio::process::Command::new(&yt_dlp_path);
                 fallback_command
                     .arg("-f")
                     .arg("bestaudio")

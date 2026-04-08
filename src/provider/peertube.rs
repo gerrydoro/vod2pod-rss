@@ -30,6 +30,9 @@ impl MediaProvider for PeerTubeProvider {
     async fn get_stream_url(&self, media_url: &Url) -> eyre::Result<Url> {
         let video_url = find_api_url(media_url).await?;
 
+        // Ensure HTTPS to prevent cleartext transmission of sensitive data
+        let video_url = ensure_https(&video_url)?;
+
         let response = reqwest::Client::new().get(video_url).send().await?;
         let video: Video = response.json().await?;
 
@@ -79,5 +82,28 @@ fn get_peertube_hosts() -> Vec<String> {
         .map(|x| x.to_string())
         .collect();
     patterns
+}
+
+/// Ensures the URL uses HTTPS to prevent cleartext transmission of sensitive data.
+/// Returns an error if the URL cannot be converted to HTTPS.
+fn ensure_https(url: &Url) -> eyre::Result<Url> {
+    if url.scheme() == "http" {
+        let host = url.host_str().ok_or_else(|| eyre::eyre!("URL has no host"))?;
+        let port = url.port();
+        let path = url.path().to_string();
+        let query = url.query().map(|q| format!("?{}", q)).unwrap_or_default();
+
+        let new_url = if let Some(port) = port {
+            format!("https://{}:{}{}{}", host, port, path, query)
+        } else {
+            format!("https://{}{}{}", host, path, query)
+        };
+
+        Ok(Url::parse(&new_url)?)
+    } else if url.scheme() == "https" {
+        Ok(url.clone())
+    } else {
+        Err(eyre::eyre!("URL scheme '{}' is not HTTPS or HTTP: {}", url.scheme(), url))
+    }
 }
 

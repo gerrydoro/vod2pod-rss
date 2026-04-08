@@ -64,7 +64,8 @@ impl Transcoder {
 
     fn get_ffmpeg_command(ffmpeg_paramenters: &FfmpegParameters) -> Command {
         debug!("generating ffmpeg command");
-        let mut command = Command::new("/nix/store/lw5hkjsflpxl6d59bbxy2xjgavvab5kx-ffmpeg-8.0-bin/bin/ffmpeg");
+        let ffmpeg_path = std::env::var("FFMPEG_PATH").unwrap_or_else(|_| "ffmpeg".to_string());
+        let mut command = Command::new(&ffmpeg_path);
         let command_ref = &mut command;
 
         command_ref
