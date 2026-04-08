@@ -89,8 +89,21 @@ async fn transcodize_rss(
     // Build transcode service URL using request connection info and configured subfolder path
     let subfolder = conf().get(ConfName::SubfolderPath).unwrap_or_else(|_| "/".to_string());
     let conn_info = req.connection_info();
-    let scheme = conn_info.scheme();
+    // Validate scheme to prevent injection through X-Forwarded-Proto
+    let scheme = match conn_info.scheme() {
+        "https" => "https",
+        "http" => "http",
+        "ws" => "http",
+        "wss" => "https",
+        _ => "http", // Default to http for unknown schemes
+    };
+    // Validate host to prevent Host header injection attacks
     let host = conn_info.host();
+    let host = if host.is_empty() || host.len() > 253 {
+        "localhost"
+    } else {
+        host
+    };
     let transcode_service_url = Url::parse(&format!(
         "{}://{}{}/transcode_media/to.mp3",
         scheme,

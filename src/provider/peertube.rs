@@ -24,6 +24,8 @@ pub struct PeerTubeProvider;
 #[async_trait]
 impl MediaProvider for PeerTubeProvider {
     async fn generate_rss_feed(&self, channel_url: Url) -> eyre::Result<String> {
+        // Ensure HTTPS to prevent cleartext transmission of sensitive data
+        let channel_url = ensure_https(&channel_url)?;
         Ok(reqwest::get(channel_url).await?.text().await?)
     }
 
