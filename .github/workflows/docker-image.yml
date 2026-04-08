@@ -18,7 +18,6 @@ jobs:
   cargo_version_bump:
     permissions:
       contents: write
-      workflows: write
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v6
