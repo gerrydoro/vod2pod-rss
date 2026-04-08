@@ -51,9 +51,8 @@ RUN cargo build --release --target "$(cat /rust_platform.txt)"
 RUN echo "final size of vod2pod:\n $(ls -lah /tmp/vod2pod/target/*/release/app)"
 
 #----------
-#this step will always run on the target architecture,
-#so the build driver will need to be able to support runtime commands on it (es: using QEMU)  
-FROM --platform=$TARGETPLATFORM debian:bookworm-slim as app
+# Use trixie (debian 13) for runtime to match the builder's GLIBC version
+FROM --platform=$TARGETPLATFORM debian:trixie-slim as app
 
 ARG BUILDPLATFORM
 ARG TARGETPLATFORM
