@@ -12,6 +12,7 @@ permissions:
 concurrency: ${{ github.head_ref || github.ref_name }}
 
 env:
+  DOCKER_HOST: "unix:///run/podman/podman.sock"
   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
 
 jobs:
