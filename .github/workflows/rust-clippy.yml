@@ -18,7 +18,7 @@ on:
 jobs:
   rust-clippy-analyze:
     name: cargo clippy
-    runs-on: [ self-hosted, nixos, vod2pod ]
+    runs-on: ubuntu-latest
     permissions:
       contents: read
       security-events: write
