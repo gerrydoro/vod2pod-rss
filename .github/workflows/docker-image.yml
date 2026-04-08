@@ -67,11 +67,11 @@ jobs:
           shell: bash
         - name: Build and push
           run: |
-            sudo buildah build \
+            /run/wrappers/bin/sudo buildah build \
               --platform linux/amd64 \
               -t ghcr.io/${{ github.repository_owner }}/vod2pod-rss:${{ env.VERSION }}-amd64 \
               -f Dockerfile .
-            sudo buildah push ghcr.io/${{ github.repository_owner }}/vod2pod-rss:${{ env.VERSION }}-amd64
+            /run/wrappers/bin/sudo buildah push ghcr.io/${{ github.repository_owner }}/vod2pod-rss:${{ env.VERSION }}-amd64
           shell: bash
   push_to_ghcr_arm64:
       needs: cargo_version_bump
@@ -94,11 +94,11 @@ jobs:
           shell: bash
         - name: Build and push
           run: |
-            sudo buildah build \
+            /run/wrappers/bin/sudo buildah build \
               --platform linux/arm64 \
               -t ghcr.io/${{ github.repository_owner }}/vod2pod-rss:${{ env.VERSION }}-arm64 \
               -f Dockerfile .
-            sudo buildah push ghcr.io/${{ github.repository_owner }}/vod2pod-rss:${{ env.VERSION }}-arm64
+            /run/wrappers/bin/sudo buildah push ghcr.io/${{ github.repository_owner }}/vod2pod-rss:${{ env.VERSION }}-arm64
           shell: bash
   push_to_ghcr_arm_v7:
       needs: cargo_version_bump
@@ -121,11 +121,11 @@ jobs:
           shell: bash
         - name: Build and push
           run: |
-            sudo buildah build \
+            /run/wrappers/bin/sudo buildah build \
               --platform linux/arm/v7 \
               -t ghcr.io/${{ github.repository_owner }}/vod2pod-rss:${{ env.VERSION }}-armv7 \
               -f Dockerfile .
-            sudo buildah push ghcr.io/${{ github.repository_owner }}/vod2pod-rss:${{ env.VERSION }}-armv7
+            /run/wrappers/bin/sudo buildah push ghcr.io/${{ github.repository_owner }}/vod2pod-rss:${{ env.VERSION }}-armv7
           shell: bash
   merge_tags:
       needs: [push_to_ghcr_arm64, push_to_ghcr_arm_v7, push_to_ghcr_amd64]
@@ -145,17 +145,17 @@ jobs:
           shell: bash
         - name: Create manifest for latest
           run: |
-            sudo buildah manifest create vod2pod-rss:latest
-            sudo buildah manifest add vod2pod-rss:latest ghcr.io/${{ github.repository_owner }}/vod2pod-rss:${{ env.VERSION }}-amd64
-            sudo buildah manifest add vod2pod-rss:latest ghcr.io/${{ github.repository_owner }}/vod2pod-rss:${{ env.VERSION }}-arm64
-            sudo buildah manifest add vod2pod-rss:latest ghcr.io/${{ github.repository_owner }}/vod2pod-rss:${{ env.VERSION }}-armv7
-            sudo buildah manifest push --all vod2pod-rss:latest ghcr.io/${{ github.repository_owner }}/vod2pod-rss:latest
+            /run/wrappers/bin/sudo buildah manifest create vod2pod-rss:latest
+            /run/wrappers/bin/sudo buildah manifest add vod2pod-rss:latest ghcr.io/${{ github.repository_owner }}/vod2pod-rss:${{ env.VERSION }}-amd64
+            /run/wrappers/bin/sudo buildah manifest add vod2pod-rss:latest ghcr.io/${{ github.repository_owner }}/vod2pod-rss:${{ env.VERSION }}-arm64
+            /run/wrappers/bin/sudo buildah manifest add vod2pod-rss:latest ghcr.io/${{ github.repository_owner }}/vod2pod-rss:${{ env.VERSION }}-armv7
+            /run/wrappers/bin/sudo buildah manifest push --all vod2pod-rss:latest ghcr.io/${{ github.repository_owner }}/vod2pod-rss:latest
           shell: bash
         - name: Create manifest for version
           run: |
-            sudo buildah manifest create vod2pod-rss:${{ env.VERSION }}
-            sudo buildah manifest add vod2pod-rss:${{ env.VERSION }} ghcr.io/${{ github.repository_owner }}/vod2pod-rss:${{ env.VERSION }}-amd64
-            sudo buildah manifest add vod2pod-rss:${{ env.VERSION }} ghcr.io/${{ github.repository_owner }}/vod2pod-rss:${{ env.VERSION }}-arm64
-            sudo buildah manifest add vod2pod-rss:${{ env.VERSION }} ghcr.io/${{ github.repository_owner }}/vod2pod-rss:${{ env.VERSION }}-armv7
-            sudo buildah manifest push --all vod2pod-rss:${{ env.VERSION }} ghcr.io/${{ github.repository_owner }}/vod2pod-rss:${{ env.VERSION }}
+            /run/wrappers/bin/sudo buildah manifest create vod2pod-rss:${{ env.VERSION }}
+            /run/wrappers/bin/sudo buildah manifest add vod2pod-rss:${{ env.VERSION }} ghcr.io/${{ github.repository_owner }}/vod2pod-rss:${{ env.VERSION }}-amd64
+            /run/wrappers/bin/sudo buildah manifest add vod2pod-rss:${{ env.VERSION }} ghcr.io/${{ github.repository_owner }}/vod2pod-rss:${{ env.VERSION }}-arm64
+            /run/wrappers/bin/sudo buildah manifest add vod2pod-rss:${{ env.VERSION }} ghcr.io/${{ github.repository_owner }}/vod2pod-rss:${{ env.VERSION }}-armv7
+            /run/wrappers/bin/sudo buildah manifest push --all vod2pod-rss:${{ env.VERSION }} ghcr.io/${{ github.repository_owner }}/vod2pod-rss:${{ env.VERSION }}
           shell: bash
