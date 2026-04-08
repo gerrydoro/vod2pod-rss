@@ -21,7 +21,7 @@ jobs:
       permissions:
         contents: read
         packages: write
-      runs-on: [ self-hosted, nixos, vod2pod ]
+      runs-on: ubuntu-latest
       steps:
         - name: checkout repo
           uses: actions/checkout@v6
@@ -56,7 +56,7 @@ jobs:
       permissions:
         contents: read
         packages: write
-      runs-on: [ self-hosted, nixos, vod2pod ]
+      runs-on: ubuntu-latest
       steps:
         - name: checkout repo
           uses: actions/checkout@v6
@@ -93,7 +93,7 @@ jobs:
       permissions:
         contents: read
         packages: write
-      runs-on: [ self-hosted, nixos, vod2pod ]
+      runs-on: ubuntu-latest
       steps:
         - name: Set Swap Space
           uses: pierotofy/set-swap-space@v1.0

@@ -18,7 +18,7 @@ jobs:
   cargo_version_bump:
     permissions:
       contents: write
-    runs-on: [ self-hosted, nixos, vod2pod ]
+    runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v6
       - name: Bump patch version
@@ -47,7 +47,7 @@ jobs:
       permissions:
         contents: read
         packages: write
-      runs-on: [ self-hosted, nixos, vod2pod ]
+      runs-on: ubuntu-latest
       steps:
         - name: checkout repo
           uses: actions/checkout@v6
@@ -83,7 +83,7 @@ jobs:
       permissions:
         contents: read
         packages: write
-      runs-on: [ self-hosted, nixos, vod2pod ]
+      runs-on: ubuntu-latest
       steps:
         - name: checkout repo
           uses: actions/checkout@v6
@@ -121,7 +121,7 @@ jobs:
       permissions:
         contents: read
         packages: write
-      runs-on: [ self-hosted, nixos, vod2pod ]
+      runs-on: ubuntu-latest
       steps:
         - name: Set Swap Space
           uses: pierotofy/set-swap-space@v1.0
@@ -163,7 +163,7 @@ jobs:
       permissions:
         contents: read
         packages: write
-      runs-on: [ self-hosted, nixos, vod2pod ]
+      runs-on: ubuntu-latest
       steps:
         - name: checkout repo
           uses: actions/checkout@v6
