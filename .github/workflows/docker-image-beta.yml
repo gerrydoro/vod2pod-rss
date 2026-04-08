@@ -33,15 +33,15 @@ jobs:
           run: sh .github/workflows/remove_dev_deps_and_version.sh beta
           shell: bash
         - name: Login to GHCR
-          run: echo "${{ secrets.GITHUB_TOKEN }}" | buildah login --username "${{ github.actor }}" --password-stdin ghcr.io
+          run: sudo buildah login --username "${{ github.actor }}" --password-stdin ghcr.io <<< "${{ secrets.GITHUB_TOKEN }}"
           shell: bash
         - name: Build and push
           run: |
-            buildah build \
+            sudo buildah build \
               --platform linux/amd64 \
               -t ghcr.io/${{ github.repository_owner }}/vod2pod-rss:${{ env.VERSION }}-amd64-beta \
               -f Dockerfile .
-            buildah push ghcr.io/${{ github.repository_owner }}/vod2pod-rss:${{ env.VERSION }}-amd64-beta
+            sudo buildah push ghcr.io/${{ github.repository_owner }}/vod2pod-rss:${{ env.VERSION }}-amd64-beta
           shell: bash
   push_to_ghcr_arm64:
       permissions:
@@ -59,15 +59,15 @@ jobs:
           run: sh .github/workflows/remove_dev_deps_and_version.sh beta
           shell: bash
         - name: Login to GHCR
-          run: echo "${{ secrets.GITHUB_TOKEN }}" | buildah login --username "${{ github.actor }}" --password-stdin ghcr.io
+          run: sudo buildah login --username "${{ github.actor }}" --password-stdin ghcr.io <<< "${{ secrets.GITHUB_TOKEN }}"
           shell: bash
         - name: Build and push
           run: |
-            buildah build \
+            sudo buildah build \
               --platform linux/arm64 \
               -t ghcr.io/${{ github.repository_owner }}/vod2pod-rss:${{ env.VERSION }}-arm64-beta \
               -f Dockerfile .
-            buildah push ghcr.io/${{ github.repository_owner }}/vod2pod-rss:${{ env.VERSION }}-arm64-beta
+            sudo buildah push ghcr.io/${{ github.repository_owner }}/vod2pod-rss:${{ env.VERSION }}-arm64-beta
           shell: bash
   push_to_ghcr_arm_v7:
       permissions:
@@ -85,15 +85,15 @@ jobs:
           run: sh .github/workflows/remove_dev_deps_and_version.sh beta
           shell: bash
         - name: Login to GHCR
-          run: echo "${{ secrets.GITHUB_TOKEN }}" | buildah login --username "${{ github.actor }}" --password-stdin ghcr.io
+          run: sudo buildah login --username "${{ github.actor }}" --password-stdin ghcr.io <<< "${{ secrets.GITHUB_TOKEN }}"
           shell: bash
         - name: Build and push
           run: |
-            buildah build \
+            sudo buildah build \
               --platform linux/arm/v7 \
               -t ghcr.io/${{ github.repository_owner }}/vod2pod-rss:${{ env.VERSION }}-armv7-beta \
               -f Dockerfile .
-            buildah push ghcr.io/${{ github.repository_owner }}/vod2pod-rss:${{ env.VERSION }}-armv7-beta
+            sudo buildah push ghcr.io/${{ github.repository_owner }}/vod2pod-rss:${{ env.VERSION }}-armv7-beta
           shell: bash
   merge_tags:
       needs: [push_to_ghcr_arm64, push_to_ghcr_arm_v7, push_to_ghcr_amd64]
@@ -109,21 +109,21 @@ jobs:
             VERSION=$(grep -oP '^version = "\K[0-9]+\.[0-9]+\.[0-9]+' Cargo.toml)
             echo "VERSION=${VERSION}" >> $GITHUB_ENV
         - name: Login to GHCR
-          run: echo "${{ secrets.GITHUB_TOKEN }}" | buildah login --username "${{ github.actor }}" --password-stdin ghcr.io
+          run: sudo buildah login --username "${{ github.actor }}" --password-stdin ghcr.io <<< "${{ secrets.GITHUB_TOKEN }}"
           shell: bash
         - name: Create manifest for beta
           run: |
-            buildah manifest create vod2pod-rss:beta
-            buildah manifest add vod2pod-rss:beta ghcr.io/${{ github.repository_owner }}/vod2pod-rss:${{ env.VERSION }}-amd64-beta
-            buildah manifest add vod2pod-rss:beta ghcr.io/${{ github.repository_owner }}/vod2pod-rss:${{ env.VERSION }}-arm64-beta
-            buildah manifest add vod2pod-rss:beta ghcr.io/${{ github.repository_owner }}/vod2pod-rss:${{ env.VERSION }}-armv7-beta
-            buildah manifest push --all vod2pod-rss:beta ghcr.io/${{ github.repository_owner }}/vod2pod-rss:beta
+            sudo buildah manifest create vod2pod-rss:beta
+            sudo buildah manifest add vod2pod-rss:beta ghcr.io/${{ github.repository_owner }}/vod2pod-rss:${{ env.VERSION }}-amd64-beta
+            sudo buildah manifest add vod2pod-rss:beta ghcr.io/${{ github.repository_owner }}/vod2pod-rss:${{ env.VERSION }}-arm64-beta
+            sudo buildah manifest add vod2pod-rss:beta ghcr.io/${{ github.repository_owner }}/vod2pod-rss:${{ env.VERSION }}-armv7-beta
+            sudo buildah manifest push --all vod2pod-rss:beta ghcr.io/${{ github.repository_owner }}/vod2pod-rss:beta
           shell: bash
         - name: Create manifest for version-beta
           run: |
-            buildah manifest create vod2pod-rss:${{ env.VERSION }}-beta
-            buildah manifest add vod2pod-rss:${{ env.VERSION }}-beta ghcr.io/${{ github.repository_owner }}/vod2pod-rss:${{ env.VERSION }}-amd64-beta
-            buildah manifest add vod2pod-rss:${{ env.VERSION }}-beta ghcr.io/${{ github.repository_owner }}/vod2pod-rss:${{ env.VERSION }}-arm64-beta
-            buildah manifest add vod2pod-rss:${{ env.VERSION }}-beta ghcr.io/${{ github.repository_owner }}/vod2pod-rss:${{ env.VERSION }}-armv7-beta
-            buildah manifest push --all vod2pod-rss:${{ env.VERSION }}-beta ghcr.io/${{ github.repository_owner }}/vod2pod-rss:${{ env.VERSION }}-beta
+            sudo buildah manifest create vod2pod-rss:${{ env.VERSION }}-beta
+            sudo buildah manifest add vod2pod-rss:${{ env.VERSION }}-beta ghcr.io/${{ github.repository_owner }}/vod2pod-rss:${{ env.VERSION }}-amd64-beta
+            sudo buildah manifest add vod2pod-rss:${{ env.VERSION }}-beta ghcr.io/${{ github.repository_owner }}/vod2pod-rss:${{ env.VERSION }}-arm64-beta
+            sudo buildah manifest add vod2pod-rss:${{ env.VERSION }}-beta ghcr.io/${{ github.repository_owner }}/vod2pod-rss:${{ env.VERSION }}-armv7-beta
+            sudo buildah manifest push --all vod2pod-rss:${{ env.VERSION }}-beta ghcr.io/${{ github.repository_owner }}/vod2pod-rss:${{ env.VERSION }}-beta
           shell: bash
