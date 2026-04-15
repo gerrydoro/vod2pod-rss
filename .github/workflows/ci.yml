@@ -3,9 +3,9 @@ name: CI
 
 on:
   push:
-    branches: [ main ]
+    branches: [main]
   pull_request:
-    branches: [ main ]
+    branches: [main]
 
 permissions:
   contents: read
@@ -14,13 +14,13 @@ jobs:
   build:
     permissions:
       contents: read
-    runs-on: [ self-hosted, nixos, vod2pod ]
+    runs-on: [self-hosted, nixos, vod2pod]
 
     steps:
-    - uses: actions/checkout@v6
+      - uses: actions/checkout@v6
 
-    - name: Build
-      run: nix build .#vod2pod-rss
+      - name: Build
+        run: nix build .#vod2pod-rss
 
-    - name: Test
-      run: nix flake check
+      - name: Test
+        run: nix flake check

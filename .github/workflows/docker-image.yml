@@ -1,7 +1,7 @@
 name: stable image
 on:
   push:
-    branches: [ stable ]
+    branches: [stable]
   # Allows you to run this workflow manually from the Actions tab
   workflow_dispatch:
 
@@ -19,7 +19,7 @@ jobs:
   cargo_version_bump:
     permissions:
       contents: write
-    runs-on: [ self-hosted, nixos, vod2pod ]
+    runs-on: [self-hosted, nixos, vod2pod]
     steps:
       - uses: actions/checkout@v6
         with:
@@ -48,113 +48,113 @@ jobs:
           git checkout stable
 
   push_to_ghcr_amd64:
-      needs: cargo_version_bump
-      permissions:
-        contents: read
-        packages: write
-      runs-on: [ self-hosted, nixos, vod2pod ]
-      steps:
-        - name: checkout repo
-          uses: actions/checkout@v6
-        - name: Bump patch version
-          run: |
-            VERSION=$(grep -oP '^version = "\K[0-9]+\.[0-9]+\.[0-9]+' Cargo.toml)
-            echo "VERSION=${VERSION}" >> $GITHUB_ENV
-        - name: remove dev deps and version (for cache purposes)
-          run: sh .github/workflows/remove_dev_deps_and_version.sh stable
-          shell: bash
-        - name: Login to GHCR
-          run: echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io --username "${{ github.actor }}" --password-stdin
-          shell: bash
-        - name: Build and push
-          run: |
-            docker buildx build \
-              --platform linux/amd64 \
-              --push \
-              -t ghcr.io/${{ github.repository_owner }}/vod2pod-rss:${{ env.VERSION }}-amd64 \
-              -f Dockerfile .
-          shell: bash
+    needs: cargo_version_bump
+    permissions:
+      contents: read
+      packages: write
+    runs-on: [self-hosted, nixos, vod2pod]
+    steps:
+      - name: checkout repo
+        uses: actions/checkout@v6
+      - name: Bump patch version
+        run: |
+          VERSION=$(grep -oP '^version = "\K[0-9]+\.[0-9]+\.[0-9]+' Cargo.toml)
+          echo "VERSION=${VERSION}" >> $GITHUB_ENV
+      - name: remove dev deps and version (for cache purposes)
+        run: sh .github/workflows/remove_dev_deps_and_version.sh stable
+        shell: bash
+      - name: Login to GHCR
+        run: echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io --username "${{ github.actor }}" --password-stdin
+        shell: bash
+      - name: Build and push
+        run: |
+          docker buildx build \
+            --platform linux/amd64 \
+            --push \
+            -t ghcr.io/${{ github.repository_owner }}/vod2pod-rss:${{ env.VERSION }}-amd64 \
+            -f Dockerfile .
+        shell: bash
   push_to_ghcr_arm64:
-      needs: cargo_version_bump
-      permissions:
-        contents: read
-        packages: write
-      runs-on: [ self-hosted, nixos, vod2pod ]
-      steps:
-        - name: checkout repo
-          uses: actions/checkout@v6
-        - name: Bump patch version
-          run: |
-            VERSION=$(grep -oP '^version = "\K[0-9]+\.[0-9]+\.[0-9]+' Cargo.toml)
-            echo "VERSION=${VERSION}" >> $GITHUB_ENV
-        - name: remove dev deps and version (for cache purposes)
-          run: sh .github/workflows/remove_dev_deps_and_version.sh stable
-          shell: bash
-        - name: Login to GHCR
-          run: echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io --username "${{ github.actor }}" --password-stdin
-          shell: bash
-        - name: Build and push
-          run: |
-            docker buildx build \
-              --platform linux/arm64 \
-              --push \
-              -t ghcr.io/${{ github.repository_owner }}/vod2pod-rss:${{ env.VERSION }}-arm64 \
-              -f Dockerfile .
-          shell: bash
+    needs: cargo_version_bump
+    permissions:
+      contents: read
+      packages: write
+    runs-on: [self-hosted, nixos, vod2pod]
+    steps:
+      - name: checkout repo
+        uses: actions/checkout@v6
+      - name: Bump patch version
+        run: |
+          VERSION=$(grep -oP '^version = "\K[0-9]+\.[0-9]+\.[0-9]+' Cargo.toml)
+          echo "VERSION=${VERSION}" >> $GITHUB_ENV
+      - name: remove dev deps and version (for cache purposes)
+        run: sh .github/workflows/remove_dev_deps_and_version.sh stable
+        shell: bash
+      - name: Login to GHCR
+        run: echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io --username "${{ github.actor }}" --password-stdin
+        shell: bash
+      - name: Build and push
+        run: |
+          docker buildx build \
+            --platform linux/arm64 \
+            --push \
+            -t ghcr.io/${{ github.repository_owner }}/vod2pod-rss:${{ env.VERSION }}-arm64 \
+            -f Dockerfile .
+        shell: bash
   push_to_ghcr_arm_v7:
-      needs: cargo_version_bump
-      permissions:
-        contents: read
-        packages: write
-      runs-on: [ self-hosted, nixos, vod2pod ]
-      steps:
-        - name: checkout repo
-          uses: actions/checkout@v6
-        - name: get version
-          run: |
-            VERSION=$(grep -oP '^version = "\K[0-9]+\.[0-9]+\.[0-9]+' Cargo.toml)
-            echo "VERSION=${VERSION}" >> $GITHUB_ENV
-        - name: remove dev deps and version (for cache purposes)
-          run: sh .github/workflows/remove_dev_deps_and_version.sh stable
-          shell: bash
-        - name: Login to GHCR
-          run: echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io --username "${{ github.actor }}" --password-stdin
-          shell: bash
-        - name: Build and push
-          run: |
-            docker buildx build \
-              --platform linux/arm/v7 \
-              --push \
-              -t ghcr.io/${{ github.repository_owner }}/vod2pod-rss:${{ env.VERSION }}-armv7 \
-              -f Dockerfile .
-          shell: bash
+    needs: cargo_version_bump
+    permissions:
+      contents: read
+      packages: write
+    runs-on: [self-hosted, nixos, vod2pod]
+    steps:
+      - name: checkout repo
+        uses: actions/checkout@v6
+      - name: get version
+        run: |
+          VERSION=$(grep -oP '^version = "\K[0-9]+\.[0-9]+\.[0-9]+' Cargo.toml)
+          echo "VERSION=${VERSION}" >> $GITHUB_ENV
+      - name: remove dev deps and version (for cache purposes)
+        run: sh .github/workflows/remove_dev_deps_and_version.sh stable
+        shell: bash
+      - name: Login to GHCR
+        run: echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io --username "${{ github.actor }}" --password-stdin
+        shell: bash
+      - name: Build and push
+        run: |
+          docker buildx build \
+            --platform linux/arm/v7 \
+            --push \
+            -t ghcr.io/${{ github.repository_owner }}/vod2pod-rss:${{ env.VERSION }}-armv7 \
+            -f Dockerfile .
+        shell: bash
   merge_tags:
-      needs: [push_to_ghcr_arm64, push_to_ghcr_arm_v7, push_to_ghcr_amd64]
-      permissions:
-        contents: read
-        packages: write
-      runs-on: [ self-hosted, nixos, vod2pod ]
-      steps:
-        - name: checkout repo
-          uses: actions/checkout@v6
-        - name: get version
-          run: |
-            VERSION=$(grep -oP '^version = "\K[0-9]+\.[0-9]+\.[0-9]+' Cargo.toml)
-            echo "VERSION=${VERSION}" >> $GITHUB_ENV
-        - name: Login to GHCR
-          run: echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io --username "${{ github.actor }}" --password-stdin
-          shell: bash
-        - name: Create manifest for latest
-          run: |
-            docker buildx imagetools create -t ghcr.io/${{ github.repository_owner }}/vod2pod-rss:latest \
-              ghcr.io/${{ github.repository_owner }}/vod2pod-rss:${{ env.VERSION }}-amd64 \
-              ghcr.io/${{ github.repository_owner }}/vod2pod-rss:${{ env.VERSION }}-arm64 \
-              ghcr.io/${{ github.repository_owner }}/vod2pod-rss:${{ env.VERSION }}-armv7
-          shell: bash
-        - name: Create manifest for version
-          run: |
-            docker buildx imagetools create -t ghcr.io/${{ github.repository_owner }}/vod2pod-rss:${{ env.VERSION }} \
-              ghcr.io/${{ github.repository_owner }}/vod2pod-rss:${{ env.VERSION }}-amd64 \
-              ghcr.io/${{ github.repository_owner }}/vod2pod-rss:${{ env.VERSION }}-arm64 \
-              ghcr.io/${{ github.repository_owner }}/vod2pod-rss:${{ env.VERSION }}-armv7
-          shell: bash
+    needs: [push_to_ghcr_arm64, push_to_ghcr_arm_v7, push_to_ghcr_amd64]
+    permissions:
+      contents: read
+      packages: write
+    runs-on: [self-hosted, nixos, vod2pod]
+    steps:
+      - name: checkout repo
+        uses: actions/checkout@v6
+      - name: get version
+        run: |
+          VERSION=$(grep -oP '^version = "\K[0-9]+\.[0-9]+\.[0-9]+' Cargo.toml)
+          echo "VERSION=${VERSION}" >> $GITHUB_ENV
+      - name: Login to GHCR
+        run: echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io --username "${{ github.actor }}" --password-stdin
+        shell: bash
+      - name: Create manifest for latest
+        run: |
+          docker buildx imagetools create -t ghcr.io/${{ github.repository_owner }}/vod2pod-rss:latest \
+            ghcr.io/${{ github.repository_owner }}/vod2pod-rss:${{ env.VERSION }}-amd64 \
+            ghcr.io/${{ github.repository_owner }}/vod2pod-rss:${{ env.VERSION }}-arm64 \
+            ghcr.io/${{ github.repository_owner }}/vod2pod-rss:${{ env.VERSION }}-armv7
+        shell: bash
+      - name: Create manifest for version
+        run: |
+          docker buildx imagetools create -t ghcr.io/${{ github.repository_owner }}/vod2pod-rss:${{ env.VERSION }} \
+            ghcr.io/${{ github.repository_owner }}/vod2pod-rss:${{ env.VERSION }}-amd64 \
+            ghcr.io/${{ github.repository_owner }}/vod2pod-rss:${{ env.VERSION }}-arm64 \
+            ghcr.io/${{ github.repository_owner }}/vod2pod-rss:${{ env.VERSION }}-armv7
+        shell: bash
