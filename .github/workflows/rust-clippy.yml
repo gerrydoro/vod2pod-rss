@@ -17,6 +17,13 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v6
 
+      - name: Setup environment
+        run: |
+          # Ensure we have the necessary environment for NixOS
+          export PATH="/nix/var/nix/profiles/default/bin:$PATH"
+          echo "Using NixOS environment for clippy"
+        shell: bash
+
       - name: Run rust-clippy
         run: |
           nix develop -c cargo clippy --all-features --message-format=json | nix develop -c clippy-sarif | tee rust-clippy-results.sarif | nix develop -c sarif-fmt || true
