@@ -40,9 +40,9 @@ install-fedora-deps:
 
 start-deps:
 	@if which docker-compose >/dev/null; then \
-		sudo docker-compose -f docker-compose.dev_enviroment.yml up --force-recreate -d; \
+		sudo docker-compose -f docker-compose.dev_environment.yml up --force-recreate -d; \
 	else \
-		sudo docker compose -f docker-compose.dev_enviroment.yml up --force-recreate -d; \
+		sudo docker compose -f docker-compose.dev_environment.yml up --force-recreate -d; \
 	fi
 
 image:
