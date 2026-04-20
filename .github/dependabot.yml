@@ -21,7 +21,7 @@ updates:
         update-types:
           - "minor"
           - "patch"
-  
+
   # Python dependencies (requirements.txt) - DAILY updates for yt-dlp
   - package-ecosystem: "pip"
     directory: "/"
@@ -35,7 +35,7 @@ updates:
       - "python"
     commit-message:
       prefix: "deps"
-  
+
   # GitHub Actions - Weekly updates
   - package-ecosystem: "github-actions"
     directory: "/"
@@ -50,7 +50,7 @@ updates:
       - "github-actions"
     commit-message:
       prefix: "ci"
-  
+
   # Docker (for base image updates) - Weekly updates
   - package-ecosystem: "docker"
     directory: "/"
