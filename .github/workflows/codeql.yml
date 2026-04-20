@@ -60,6 +60,10 @@ jobs:
       # - name: Setup runtime (example)
       #   uses: actions/setup-example@v1
 
+      - name: Setup NixOS for CodeQL
+        run: |
+          nix-shell -p stdenv glibc --run "echo 'Dependencies loaded'"
+
       # Initializes the CodeQL tools for scanning.
       - name: Initialize CodeQL
         uses: github/codeql-action/init@v4
