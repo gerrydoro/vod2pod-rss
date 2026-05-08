@@ -71,14 +71,63 @@ impl Transcoder {
         command_ref
             .args(["-ss", ffmpeg_paramenters.seek_time.to_string().as_str()])
             .args(["-i", ffmpeg_paramenters.url.as_str()])
-            .args([
-                "-acodec",
-                ffmpeg_paramenters.audio_codec.get_ffmpeg_codec_str(),
-            ])
-            .args([
-                "-ab",
-                format!("{}k", ffmpeg_paramenters.bitrate_kbit).as_str(),
-            ])
+            .args({
+                // Helper closure to probe codec
+                let probe = |url: &str| -> Option<String> {
+                    // ffprobe -v error -select_streams a:0 -show_entries stream=codec_name -of default=noprint_wrappers=1:nokey=1 <url>
+                    let output = std::process::Command::new("ffprobe")
+                        .args([
+                            "-v",
+                            "error",
+                            "-select_streams",
+                            "a:0",
+                            "-show_entries",
+                            "stream=codec_name",
+                            "-of",
+                            "default=noprint_wrappers=1:nokey=1",
+                            url,
+                        ])
+                        .output()
+                        .ok()?;
+                    if output.status.success() {
+                        let codec = String::from_utf8_lossy(&output.stdout).trim().to_string();
+                        if !codec.is_empty() {
+                            return Some(codec);
+                        }
+                    }
+                    None
+                };
+
+                let input_codec = probe(ffmpeg_paramenters.url.as_str());
+                let target_codec = ffmpeg_paramenters.audio_codec.get_ffmpeg_codec_str();
+                if let Some(ref ic) = input_codec {
+                    // ffprobe returns codec names like "opus", "mp3", "aac" etc.
+                    // Map target codec names to ffprobe names for comparison.
+                    let target_name = match ffmpeg_paramenters.audio_codec {
+                        crate::configs::AudioCodec::MP3 => "mp3",
+                        crate::configs::AudioCodec::Opus => "opus",
+                        crate::configs::AudioCodec::OGGVorbis => "vorbis",
+                    };
+                    if ic.eq_ignore_ascii_case(target_name) {
+                        // Use stream copy
+                        return vec!["-c", "copy"]
+                            .into_iter()
+                            .map(|s| s.to_string())
+                            .collect();
+                    }
+                }
+                // Default re-encode path
+                vec![
+                    "-acodec",
+                    target_codec,
+                    "-ab",
+                    format!("{}k", ffmpeg_paramenters.bitrate_kbit).as_str(),
+                ]
+                .into_iter()
+                .map(|s| s.to_string())
+                .collect()
+            })
+            // Set output format based on codec (required for copy as well)
             .args(["-f", ffmpeg_paramenters.audio_codec.get_extension_str()])
             .args([
                 "-bufsize",
@@ -147,8 +196,7 @@ impl Transcoder {
                     }
                     Err(e) => {
                         error!("failed to read from stderr: {}", e);
-                        let _ = tx_stderr
-                            .blocking_send(Err(std::io::Error::other(e)));
+                        let _ = tx_stderr.blocking_send(Err(std::io::Error::other(e)));
                         break;
                     }
                 }
@@ -249,7 +297,11 @@ mod test {
         if let Some(x) = ppath.to_str() {
             info!("{} ", x);
             // Use ends_with to handle Nix store paths like /nix/store/.../bin/ffmpeg
-            assert!(x.ends_with("ffmpeg") || x == "ffmpeg", "ffmpeg path should end with 'ffmpeg', got: {}", x);
+            assert!(
+                x.ends_with("ffmpeg") || x == "ffmpeg",
+                "ffmpeg path should end with 'ffmpeg', got: {}",
+                x
+            );
         }
         let mut args = transcoder.ffmpeg_command.get_args();
 
