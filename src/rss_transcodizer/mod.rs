@@ -73,7 +73,7 @@ pub fn inject_vod2pod_customizations(
                 let enclosure = Enclosure {
                     length: size_bytes.to_string(),
                     url: transcode_service_url.to_string(),
-                    mime_type: "audio/mpeg".to_string(),
+                    mime_type: codec.get_mime_type_str().to_string(),
                 };
 
                 debug!(
@@ -87,8 +87,6 @@ pub fn inject_vod2pod_customizations(
 
     Ok(injected_feed.to_string())
 }
-
-
 
 fn get_description(item: &Item) -> String {
     const FOOTER: &str = concat!(
@@ -131,4 +129,3 @@ fn parse_duration(duration_str: &str) -> Result<Duration, String> {
     let duration_secs = hours * 3600 + minutes * 60 + seconds;
     Ok(Duration::from_secs(duration_secs))
 }
-
