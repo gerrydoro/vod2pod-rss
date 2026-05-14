@@ -207,7 +207,8 @@ in
 
         # Environment - PATH must include ffmpeg and yt-dlp for child processes
         Environment = [
-          "PORT=${toString cfg.port}"
+          "VOD2POD_RSS_HOST=${toString cfg.host}"
+          "VOD2POD_RSS_PORT=${toString cfg.port}"
           "PATH=${pkgs.ffmpeg}/bin:${pkgs.yt-dlp}/bin:${pkgs.deno}/bin:${pkgs.gnugrep}/bin:${pkgs.gnused}/bin:${pkgs.coreutils}/bin:/run/wrappers/bin"
           "TRANSCODE=${if cfg.settings.transcode then "true" else "false"}"
           "MP3_BITRATE=${toString cfg.settings.mp3Bitrate}"

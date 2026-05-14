@@ -68,7 +68,9 @@
               --set-default TRANSCODE true \
               --set-default REDIS_ADDRESS localhost \
               --set-default REDIS_PORT 6379 \
-              --set-default SUBFOLDER /
+              --set-default SUBFOLDER / \
+              --set-default VOD2POD_RSS_HOST 0.0.0.0 \
+              --set-default VOD2POD_RSS_PORT 8080
 
             # Copy templates directory
             cp -r templates $out/templates
@@ -119,6 +121,8 @@
             export REDIS_ADDRESS=localhost
             export REDIS_PORT=6379
             export SUBFOLDER=/
+            export VOD2POD_RSS_HOST=0.0.0.0
+            export VOD2POD_RSS_PORT=8080
           '';
         };
       }
@@ -147,8 +151,14 @@
 
             port = lib.mkOption {
               type = lib.types.port;
-              default = 65001;
+              default = 8080;
               description = "Port to listen on";
+            };
+
+            host = lib.mkOption {
+              type = lib.types.str;
+              default = "0.0.0.0";
+              description = "Host address to bind to";
             };
 
             settings = {
@@ -217,7 +227,8 @@
                 RestartSec = "5s";
                 WorkingDirectory = "/var/lib/vod2pod-rss";
                 Environment = [
-                  "PORT=${toString cfg.port}"
+                  "VOD2POD_RSS_HOST=${cfg.host}"
+                  "VOD2POD_RSS_PORT=${toString cfg.port}"
                   "REDIS_ADDRESS=127.0.0.1"
                   "REDIS_PORT=6380"
                   "USE_BEST_AUDIO_QUALITY=${if cfg.settings.useBestAudioQuality then "true" else "false"}"
