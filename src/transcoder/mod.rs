@@ -93,11 +93,12 @@ impl Transcoder {
         };
 
         // Build ffmpeg arguments
-        let mut ffmpeg_args: Vec<String> = Vec::new();
-        ffmpeg_args.push("-ss".to_string());
-        ffmpeg_args.push(ffmpeg_paramenters.seek_time.to_string());
-        ffmpeg_args.push("-i".to_string());
-        ffmpeg_args.push(ffmpeg_paramenters.url.as_str().to_string());
+        let mut ffmpeg_args = vec![
+            "-ss".to_string(),
+            ffmpeg_paramenters.seek_time.to_string(),
+            "-i".to_string(),
+            ffmpeg_paramenters.url.as_str().to_string(),
+        ];
 
         // Determine if we can copy the stream directly (e.g., source is already Opus and target is Opus)
         // This avoids re-encoding errors like "Error parsing Opus packet header".
