@@ -20,12 +20,12 @@ actix-web = "=4.13.0"
 async-trait = "=0.1.89"
 url = { version="=2.5.8", features = ["serde"]}
 futures = "=0.3.32"
-log = "=0.4.29"
+log = "=0.4.30"
 regex = "=1.12.3"
 reqwest = { version = "=0.13.3", features = ["json", "form", "query", "native-tls"] }
 serde = "=1.0.228"
-serde_json = "=1.0.149"
-tokio = { version = "=1.52.1", features = ["macros", "process"]}
+serde_json = "=1.0.150"
+tokio = { version = "=1.52.3", features = ["macros", "process"]}
 uuid = { version= "=1.23.1", features = ["v4", "serde"]}
 genawaiter = {version = "=0.99", features = ["futures03"] }
 openssl = { version = "*", features = ["vendored"] }                                          #this is here just to make cross-compiling work during github actions
