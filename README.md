@@ -1,107 +1,121 @@
-# vod2pod-rss [![tests](https://github.com/gerrydoro/vod2pod-rss/actions/workflows/rust.yml/badge.svg)](https://github.com/gerrydoro/vod2pod-rss/actions/workflows/rust.yml) [![stable image](https://github.com/gerrydoro/vod2pod-rss/actions/workflows/docker-image.yml/badge.svg?branch=stable)](https://github.com/gerrydoro/vod2pod-rss/actions/workflows/docker-image.yml) [![beta image](https://github.com/gerrydoro/vod2pod-rss/actions/workflows/docker-image-beta.yml/badge.svg)](https://github.com/gerrydoro/vod2pod-rss/actions/workflows/docker-image-beta.yml)
+# VoD2Pod-RSS Project Context
 
-Converts a YouTube or Twitch channel into a full blown audio podcast feed.
+## Project Overview
 
-<a label="example of it working with podcast addict" href="https://user-images.githubusercontent.com/4585690/231301791-2f838fb3-4f6e-4382-bac4-c968bfe98c08.png"><img src="https://user-images.githubusercontent.com/4585690/231301791-2f838fb3-4f6e-4382-bac4-c968bfe98c08.png" align="right" height="350" ></a>
+**VoD2Pod-RSS** is a Rust-based application that converts video-on-demand (VoD) content from platforms like YouTube, Twitch, PeerTube, or generic RSS/Atom feeds into audio podcast RSS feeds. The converted feeds can be listened to in any standard podcast client.
 
-# Features
-- Completely converts the VoDs into a proper podcast RSS that can be listened to directly inside the client.
-- The VoDs are not downloaded on the server, so no need for storage while self-hosting this app.
-- VoDs are transcoded to MP3 192k on the fly by default, tested to be working flawlessly even on a Raspberry Pi 3-4.
-- also works on standard rss podcasts feed if you want to have a lower bitrate version to save mobile data.
+### Key Features
 
-## Limitations
-- Youtube channel avatar is not present and results are limited to 15 when no YouTube API key is set.
+- **Multi-platform Support**: YouTube, Twitch, PeerTube, and generic RSS/Atom feeds
+- **On-the-fly Transcoding**: VoDs are transcoded to MP3 (default 192k), OPUS, or OGG Vorbis without server-side storage
+- **RSS Feed Generation**: Creates proper podcast RSS feeds with iTunes extensions
+- **Caching**: Uses Redis for caching generated feeds and stream URLs
+- **Web UI**: Includes a simple web interface for generating podcast URLs
+- **Self-hosted**: Designed for personal hosting with Docker or NixOS
 
-# Usage
+### Architecture
 
-## Web UI
-<a label="frontend" href="https://user-images.githubusercontent.com/4585690/234704870-0bf3023a-78e0-4ccc-adea-9d1f6ea2fabc.png"><img src="https://user-images.githubusercontent.com/4585690/234704870-0bf3023a-78e0-4ccc-adea-9d1f6ea2fabc.png" align="right" width="400px" ></a>
-- just go where you hosted vod2pod and you will find an easy to use UI to generate the feed
-## Manually Generate A Podcast URL
-- In a web browser go to where you hosted vod2pod, es: http://myserver.com/ or http://localhost/
-  - In the web page that opens paste the channel you want to convert to podcast and copy the generated link.
-- Optionally goto : http://myserver.com/transcodize_rss?url=channel_url
-  - An RSS will be generated.
-  - Replace `channel_url` with the URL of the YouTube or Twitch channel you want to convert into a podcast.
-    - YouTube: `http://myserver.com/transcodize_rss?url=https://www.youtube.com/c/channelname`
-    - Twitch: `http://myserver.com/transcodize_rss?url=https://www.twitch.tv/channelname`
-    - RSS/atom feed: `http://myserver.com/transcodize_rss?url=https://feeds.simplecast.com/aU_RzZ7j`
-      - Add the domain to the whitelist. See configurations [below](#configurations)
+The application consists of three main phases:
 
-## Add The URL To A Podcast Client
-- find a tutorial on how to add an rss feed to your favorite podcast app
+1. **Feed Generation**: Implements the `MediaProvider` trait for each platform (YouTube, Twitch, PeerTube, Generic)
+2. **Feed Rewriting**: Injects transcoding URLs into the generated RSS feed
+3. **Live Transcoding**: Uses ffmpeg to transcode videos on-demand when clients request the audio stream
 
-# Optional API Access
-- Twitch: Get your SECRET and CLIENT ID <https://dev.twitch.tv/console>
-- YouTube: Enable more than 15 items in the RSS feed, channel avatar
-  - API key <https://developers.google.com/youtube/v3/getting-started>
-  - Enable API Access <https://console.cloud.google.com/>
-    - APIs & Services > +Enable APIs and Services > Search "YouTube Data API"
+### Directory Structure
 
-See configurations [below](#configurations)
-
-# Install
-## Clone This Repository
 ```
-git clone https://github.com/gerrydoro/vod2pod-rss.git
-```
-
-## Docker
-- Install [Docker Compose](https://docs.docker.com/compose/install/)
-- Precompiled images are available [here](https://hub.docker.com/r/gerrydoro/vod2pod-rss/) for linux machines with arm64, amd64 and armv7 (raspberry pis are supported).
-
-### Docker Compose
-```
-cd vod2pod-rss
-nano docker-compose.yml
-```
-See configurations [below](#configurations)
-```
-sudo docker compose up -d
+vod2pod-rss/
+├── src/
+│   ├── lib.rs              # Library root, exports modules
+│   ├── main.rs             # Application entry point
+│   ├── configs/            # Configuration management (environment variables)
+│   │   └── mod.rs
+│   ├── provider/           # Media provider implementations
+│   │   ├── mod.rs          # MediaProvider trait and dispatcher macro
+│   │   ├── youtube.rs      # YouTube provider (API + atom feed fallback)
+│   │   ├── twitch.rs       # Twitch provider
+│   │   ├── peertube.rs     # PeerTube provider
+│   │   └── generic.rs      # Generic RSS/Atom feed provider
+│   ├── rss_transcodizer/   # RSS feed modification logic
+│   ├── server/             # Actix-web HTTP server
+│   │   └── mod.rs
+│   └── transcoder/         # ffmpeg transcoding logic
+├── templates/              # HTML templates for web UI
+├── tests/                  # Integration tests
+├── Cargo.toml              # Rust dependencies and project metadata
+├── Makefile                # Development commands
+├── docker-compose.yml      # Production Docker setup
+├── Dockerfile              # Multi-arch Docker build
+├── flake.nix               # Nix flake with NixOS module
+└── nixos-module.nix        # Standalone NixOS module
 ```
 
-#### Updating
+## Building and Running
+
+### Prerequisites
+
+- **Rust** (stable toolchain)
+- **Redis** (for caching)
+- **ffmpeg** (for transcoding)
+- **yt-dlp** (for URL extraction from YouTube and other platforms)
+- **Deno** (optional, for some provider functionality)
+
+### Development Setup
+
+#### Using Make (Recommended)
+
+```bash
+# Install dependencies (Ubuntu/Debian)
+make install-ubuntu-deps
+
+# Install dependencies (Fedora)
+make install-fedora-deps
+
+# Start required services (Redis)
+make start-deps
+
+# Run tests
+make test
+
+# Run the server
+make run
+
+# Hot-reload on file changes
+make hot-reload
 ```
-sudo docker compose pull && sudo docker compose up -d
-sudo docker system prune
+
+#### Manual Setup
+
+```bash
+# Install system dependencies
+sudo apt install -y ffmpeg python3-pip redis
+pip3 install yt-dlp
+
+# Start Redis
+redis-server
+
+# Set environment variables (optional)
+export REDIS_ADDRESS=localhost
+export REDIS_PORT=6379
+export MP3_BITRATE=192
+export TRANSCODE=true
+export SUBFOLDER=/
+
+# Run the application
+cargo run --bin app
 ```
-- To get notifications of new release follow [these instructions](https://docs.github.com/en/account-and-profile/managing-subscriptions-and-notifications-on-github/setting-up-notifications/about-notifications)
 
-#### Switching to the Beta branch
+### Docker Deployment
 
-The beta branch is a version of vod2pod that is always updated to the latest yt-dlp releases in a matter of days. If you have problems, try it out first to see if they are fixed, then open an issue.
+```bash
+# Using docker-compose
+docker compose up -d
 
-Also by being on the beta branch you might help find bugs before any new stable release, so you'll help the project too.
-
-To switch, open the compose docker-compose.yml and edit the vod2pod image section from "latest" to "beta", then follow the steps to update.
-
-## Nix / NixOS
+# Update
+docker compose pull && docker compose up -d
+```
 
 ### NixOS Module
-
-VoD2Pod-RSS can be installed as a NixOS module using flakes. Add the following to your `/etc/nixos/flake.nix`:
-
-```nix
-{
-  inputs = {
-    nixpkgs.url = "github:NixOS/nixpkgs/nixos-25.11";
-    vod2pod-rss.url = "github:gerrydoro/vod2pod-rss";
-  };
-
-  outputs = { self, nixpkgs, vod2pod-rss, ... }: {
-    nixosConfigurations.your-hostname = nixpkgs.lib.nixosSystem {
-      system = "x86_64-linux";
-      modules = [
-        ./configuration.nix
-        vod2pod-rss.nixosModules.default
-      ];
-    };
-  };
-}
-```
-
-Then configure the service in your NixOS configuration:
 
 ```nix
 {
@@ -109,73 +123,187 @@ Then configure the service in your NixOS configuration:
     enable = true;
     port = 65001;
     settings = {
-      ytApiKey = "your-youtube-api-key"; # Optional, for >15 items
-      useBestAudioQuality = true;        # Use best audio from yt-dlp
-      audioCodec = "OPUS";               # MP3, OPUS, or OGG_VORBIS
+      ytApiKey = "your-youtube-api-key";  # Optional, for >15 items
+      useBestAudioQuality = true;
+      audioCodec = "MP3";  # MP3, OPUS, or OGG_VORBIS
     };
   };
 }
 ```
 
-Rebuild your system:
+## Configuration
+
+Environment variables (can be set in `.env` file or Docker compose):
+
+| Variable | Default | Description |
+|----------|---------|-------------|
+| `REDIS_ADDRESS` | `localhost` | Redis server address |
+| `REDIS_PORT` | `6379` | Redis server port |
+| `MP3_BITRATE` | `192` | Transcoding bitrate in kbps |
+| `TRANSCODE` | `true` | Enable/disable transcoding |
+| `SUBFOLDER` | `/` | Root path for reverse proxy support |
+| `YT_API_KEY` | - | YouTube API key (for >15 results) |
+| `TWITCH_CLIENT_ID` | - | Twitch API client ID |
+| `TWITCH_SECRET` | - | Twitch API secret |
+| `AUDIO_CODEC` | `MP3` | Audio codec: MP3, OPUS, OGG_VORBIS |
+| `USE_BEST_AUDIO_QUALITY` | `false` | Use best audio from yt-dlp |
+| `CACHE_TTL` | `600` | Cache TTL in seconds |
+| `VALID_URL_DOMAINS` | - | Comma-separated allowed domains |
+| `YOUTUBE_YT_DLP_GET_URL_EXTRA_ARGS` | `[]` | Extra args for yt-dlp (JSON array) |
+
+## API Endpoints
+
+- `GET /` - Web UI for generating podcast URLs
+- `GET /transcodize_rss?url=<channel_url>` - Generate podcast RSS feed
+- `GET /transcode_media/to.mp3?url=<video_url>&bitrate=<kbit>&duration=<secs>` - Transcode video to audio
+- `GET /health` - Health check endpoint
+
+## Provider System
+
+### MediaProvider Trait
+
+Each platform provider implements the `MediaProvider` trait:
+
+```rust
+#[async_trait]
+pub trait MediaProvider {
+    async fn generate_rss_feed(&self, channel_url: Url) -> eyre::Result<String>;
+    async fn get_stream_url(&self, media_url: &Url) -> eyre::Result<Url>;
+    fn domain_whitelist_regexes(&self) -> Vec<Regex>;
+}
+```
+
+### Adding a New Provider
+
+1. Create a new file in `src/provider/` (e.g., `newplatform.rs`)
+2. Implement the `MediaProvider` trait
+3. Add the provider to the dispatcher macro in `src/provider/mod.rs`:
+
+```rust
+generate_static_dispatcher!(
+    Provider
+    for
+    YoutubeProvider,
+    TwitchProvider,
+    PeerTubeProvider,
+    GenericProvider,
+    NewPlatformProvider,  // Add here
+);
+```
+
+## Testing
 
 ```bash
-sudo nixos-rebuild switch --flake .#your-hostname
+# Run all tests
+cargo test -- --nocapture
+
+# Watch mode (requires cargo-watch)
+cargo watch -x "test -- --nocapture"
 ```
 
-### Nix Package
+**Note**: Tests may require API keys for full functionality. Some tests use mocked responses or localhost URLs.
 
-For non-NixOS systems with Nix installed:
+## Development Conventions
+
+### Code Style
+
+- Follows standard Rust conventions
+- Uses `eyre` for error handling (provides better error context)
+- Async/await with Tokio runtime
+- Actix-web for HTTP server
+
+### Logging
+
+Uses the `log` crate with `simple_logger`:
+
+```rust
+use log::{info, debug, warn, error};
+
+info!("Starting feed generation");
+debug!("Detailed debug info");
+warn!("Warning message");
+error!("Error occurred");
+```
+
+Set log level with `RUST_LOG` environment variable:
+- `RUST_LOG=DEBUG` - Full debug output
+- `RUST_LOG=INFO` - Standard logging (production)
+- `RUST_LOG=ERROR` - Errors only
+
+### Caching Strategy
+
+- **Feed Cache**: Generated RSS feeds cached in Redis by URL
+- **Stream URL Cache**: YouTube stream URLs cached for 5 hours
+- **Channel ID Cache**: YouTube channel username-to-ID mapping cached indefinitely
+
+### Security Considerations
+
+- **URL Whitelisting**: All URLs must match provider regex patterns (prevents SSRF attacks)
+- **No Secrets in Logs**: API keys validated but never logged
+- **Range Request Support**: Proper handling of HTTP Range headers for seeking
+
+## Key Dependencies
+
+### Rust (as of latest update)
+
+| Dependency | Version | Purpose |
+|------------|---------|---------|
+| `actix-web` | 4.13.0 | HTTP server framework |
+| `tokio` | 1.50.0 | Async runtime |
+| `rss` | 2.0 | RSS feed generation |
+| `feed-rs` | 2.3.1 | RSS/Atom feed parsing |
+| `google-youtube3` | 7.0.0 | YouTube API client |
+| `google-apis-common` | 8.0.0 | Google APIs authentication (NoToken) |
+| `hyper-util` | 0.1.20 | HTTP client utilities |
+| `redis` | 1.1 | Redis client for caching |
+| `cached` | 0.59.0 | Caching macros with Redis backend |
+| `eyre` | 0.6 | Error handling |
+| `regex` | 1.12.3 | URL matching and parsing |
+| `reqwest` | 0.13.2 | HTTP client |
+| `chrono` | 0.4.44 | Date/time handling |
+| `uuid` | 1.23.0 | UUID generation |
+
+### Python
+
+| Dependency | Version | Purpose |
+|------------|---------|---------|
+| `yt-dlp` | 2026.3.17 | Video URL extraction |
+
+## Common Issues
+
+### YouTube API Limit
+
+Without an API key, YouTube feeds are limited to 15 items (uses atom feed fallback).
+
+### Redis Connection
+
+The application requires Redis. Ensure Redis is running and accessible at the configured address/port.
+
+### yt-dlp Path
+
+The application expects `yt-dlp` to be in PATH. Docker images include it; for local development, install via pip:
 
 ```bash
-nix run github:gerrydoro/vod2pod-rss
+pip3 install yt-dlp
 ```
 
-Or add to your `configuration.nix` or `home.nix`:
+### Transcoding Performance
 
-```nix
-environment.systemPackages = [
-  (inputs.vod2pod-rss.packages.${system}.default)
-];
-```
-
-## Configurations
-### Web Server Port
-- `ports`: "80:8080" (optional) Change 80 to another port if you already use the port 80 on your host
-  - e.g. "81:8080" http://myserver.com:81/
-
-### Optional API Keys
-- `YT_API_KEY`: Set your YouTube API key (works without but the feed is limited to 15)
-  - e.g. YT_API_KEY=AIzaSyBTCCEOHm
-- `TWITCH_SECRET`: Set your Twitch secret
-- `TWITCH_CLIENT_ID`: Set your Twitch client ID
-
-Note: These can also be set using Docker [.env files](https://docs.docker.com/compose/environment-variables/env-file/) 
-
-### Advanced YouTube Configuration
-- `YOUTUBE_YT_DLP_GET_URL_EXTRA_ARGS`: Additional arguments to pass to yt-dlp when extracting YouTube audio URLs
-  - This variable allows you to pass custom arguments to yt-dlp for advanced configurations
-  - Format: JSON array of strings, e.g. `["--arg1", "value1", "--arg2", "value2"]`
-  - Useful for scenarios like:
-    - **Using a proxy**: `YOUTUBE_YT_DLP_GET_URL_EXTRA_ARGS=["--proxy", "http://proxy.example.com:8080"]`
-    - **Custom user-agent**: `YOUTUBE_YT_DLP_GET_URL_EXTRA_ARGS=["--user-agent", "Mozilla/5.0 Custom Agent"]`
-  - Note: These arguments are applied in addition to the default yt-dlp arguments used by vod2pod-rss
-  - Default: `[]` (empty array)
-
-### Environment
-- `TRANSCODE`: Set to "false" to disable transcoding, usefull if you only need the feeds (default: "true")
-- `MP3_BITRATE`: Set the bitrate of the trascoded stream to your client (default: "192")
-- `SUBFOLDER`: Set the the root path of the app, useful for reverse proxies (default: "/")
-- `VALID_URL_DOMAINS`: (optional) Set a comma separated list of domain urls that are allowed to be converted into RSS  (defaults to YouTube and Twitch urls)
-- `CACHE_TTL`: (optional) Set the time to live of the cache in seconds, default is 600 seconds (10 minutes)
-- `YOUTUBE_YT_DLP_GET_URL_EXTRA_ARGS`
-
-# Honorable Mentions
-
-These projects were fundamental for the success of vod2pod-rss. Originally they handled the feed generation for YouTube and Twitch; now this is all done by vod2pod-rss internally so they are not used anymore, but were still helpful to get vod2pod-rss up and running fast.
-* YouTube support was possible thanks to the cool [PodTube fork project by amckee](https://github.com/amckee/PodTube) - consider dropping a star.
-* Twitch support was possible thanks to [lzeke0's TwitchRSS](https://github.com/lzeke0/TwitchRSS) - drop a star to him too!
+Default bitrate is 192kbps. Tested to work on Raspberry Pi 3-4. Adjust `MP3_BITRATE` for lower bandwidth.
 
 ## Contributing
 
-Check the [CONTRIBUTING.md](CONTRIBUTING.md) file for a tutorial on how to set up your environment for development.
+- Discuss changes via issue before making significant changes
+- Small bug fixes and typos can be submitted directly
+- Add tests for new features when possible
+- All PRs must pass `make test`
+- Target the `main` branch for pull requests
+
+## Related Projects
+
+- **PodTube** (amckee): Original YouTube-to-podcast inspiration
+- **TwitchToPodcastRSS** (lzeke0): Original Twitch RSS inspiration
+
+## License
+
+MIT License - see `LICENSE` file for details.
