@@ -28,29 +28,46 @@
         runtimeDeps = with pkgs; [
           ffmpeg
           yt-dlp
-          deno
           redis
         ];
 
-        # Build the VoD2Pod-RSS package
+        # Development dependencies
+        devDeps = with pkgs; [
+          # Rust toolchain
+          rustToolchain
+          cargo-watch
+          rustfmt
+          clippy
+
+          # Build dependencies
+          pkg-config
+          openssl
+          libiconv
+          perl
+
+          # Runtime dependencies for tests
+          ffmpeg
+          yt-dlp
+          redis
+          python3
+          python3Packages.pip
+
+          # Testing utilities
+          cargo-nextest
+        ];
+
+        # VoD2Pod-RSS package (for production)
         vod2pod-rss-pkg = pkgs.rustPlatform.buildRustPackage {
           pname = "vod2pod-rss";
           version = "1.2.6";
 
           src = ./.;
 
-          cargoLock = {
-            lockFile = ./Cargo.lock;
-          };
-
-          # Use native TLS (OpenSSL) instead of rustls to avoid crypto provider issues
+          # Use native TLS (OpenSSL) instead of rustls
           buildInputs = with pkgs; [
             openssl
             libiconv
           ];
-
-          # Disable tests as they require API keys
-          doCheck = false;
 
           nativeBuildInputs = with pkgs; [
             pkg-config
@@ -59,7 +76,9 @@
             perl
           ];
 
-          # Copy templates to the package
+          # Disable tests in package build (they require API keys)
+          doCheck = false;
+
           postInstall = ''
             wrapProgram $out/bin/app \
               --prefix PATH : ${pkgs.lib.makeBinPath runtimeDeps} \
@@ -96,171 +115,35 @@
           name = "vod2pod-rss";
         };
 
+        # Development shell with all tools needed to build and test
         devShells.default = pkgs.mkShell {
-          buildInputs = with pkgs; [
-            rustToolchain
-            cargo
-            rustfmt
-            clippy
-            clippy-sarif
-            sarif-fmt
-            openssl
-            pkg-config
-            perl
-            ffmpeg
-            yt-dlp
-            deno
-            redis
-            cargo-watch
-          ];
+          buildInputs = devDeps;
 
+          # Environment variables for the project
           shellHook = ''
-            export RUST_LOG=DEBUG
-            export MP3_BITRATE=192
-            export TRANSCODE=true
+            # Set Redis connection for tests
             export REDIS_ADDRESS=localhost
             export REDIS_PORT=6379
-            export SUBFOLDER=/
-            export VOD2POD_RSS_HOST=0.0.0.0
-            export VOD2POD_RSS_PORT=8080
+
+            # Set default logging
+            export RUST_LOG=DEBUG
+
+            # Add runtime deps to PATH
+            export PATH="${pkgs.lib.makeBinPath runtimeDeps}":$PATH
+
+            # Start Redis if not running (optional convenience)
+            if ! redis-cli ping > /dev/null 2>&1; then
+              echo "Redis not running. Start with: redis-server --daemonize yes"
+            fi
+
+            echo "=== VoD2Pod-RSS Development Environment ==="
+            echo "Rust: $(cargo --version)"
+            echo "FFmpeg: $(ffmpeg -version | head -1)"
+            echo "yt-dlp: $(yt-dlp --version)"
+            echo "Redis: $(redis-cli --version | head -1)"
+            echo "==========================================="
           '';
         };
       }
-    )
-    // {
-      # NixOS module for system-wide installation
-      nixosModules.default =
-        {
-          config,
-          pkgs,
-          lib,
-          ...
-        }:
-        let
-          cfg = config.services.vod2pod-rss;
-        in
-        {
-          options.services.vod2pod-rss = {
-            enable = lib.mkEnableOption "VoD2Pod-RSS service";
-
-            package = lib.mkOption {
-              type = lib.types.package;
-              default = self.packages.${pkgs.system}.default;
-              description = "VoD2Pod-RSS package to use";
-            };
-
-            port = lib.mkOption {
-              type = lib.types.port;
-              default = 8080;
-              description = "Port to listen on";
-            };
-
-            host = lib.mkOption {
-              type = lib.types.str;
-              default = "0.0.0.0";
-              description = "Host address to bind to";
-            };
-
-            settings = {
-              ytApiKey = lib.mkOption {
-                type = lib.types.nullOr lib.types.str;
-                default = null;
-                description = "YouTube API key";
-              };
-
-              useBestAudioQuality = lib.mkOption {
-                type = lib.types.bool;
-                default = false;
-                description = "Use best audio quality from yt-dlp";
-              };
-
-              audioCodec = lib.mkOption {
-                type = lib.types.enum [
-                  "MP3"
-                  "OPUS"
-                  "OGG_VORBIS"
-                ];
-                default = "MP3";
-                description = "Audio codec";
-              };
-            };
-          };
-
-          config = lib.mkIf cfg.enable {
-            environment.systemPackages = [ cfg.package ];
-
-            # Redis instance for VoD2Pod-RSS
-            # The application requires TCP connection (doesn't support Unix sockets)
-            services.redis.servers.vod2pod = {
-              enable = true;
-              port = 6380;
-              bind = "127.0.0.1";
-            };
-
-            # User and group for the service
-            users.users.vod2pod-rss = {
-              isSystemUser = true;
-              group = "vod2pod-rss";
-              description = "VoD2Pod-RSS service user";
-              home = "/var/lib/vod2pod-rss";
-              createHome = true;
-            };
-
-            users.groups.vod2pod-rss = { };
-
-            # Systemd service configuration
-            systemd.services.vod2pod-rss = {
-              description = "VoD2Pod-RSS - Convert video feeds to podcast RSS";
-              after = [
-                "network.target"
-                "redis-vod2pod.service"
-              ];
-              requires = [ "redis-vod2pod.service" ];
-              wantedBy = [ "multi-user.target" ];
-
-              serviceConfig = {
-                Type = "simple";
-                User = "vod2pod-rss";
-                Group = "vod2pod-rss";
-                ExecStart = "${cfg.package}/bin/app";
-                Restart = "always";
-                RestartSec = "5s";
-                WorkingDirectory = "/var/lib/vod2pod-rss";
-                Environment = [
-                  "VOD2POD_RSS_HOST=${cfg.host}"
-                  "VOD2POD_RSS_PORT=${toString cfg.port}"
-                  "REDIS_ADDRESS=127.0.0.1"
-                  "REDIS_PORT=6380"
-                  "USE_BEST_AUDIO_QUALITY=${if cfg.settings.useBestAudioQuality then "true" else "false"}"
-                  "AUDIO_CODEC=${cfg.settings.audioCodec}"
-                ]
-                ++ lib.optional (cfg.settings.ytApiKey != null) "YT_API_KEY=${cfg.settings.ytApiKey}";
-
-                # Security hardening
-                ProtectSystem = "full";
-                ProtectHome = true;
-                PrivateTmp = true;
-                NoNewPrivileges = true;
-                RestrictAddressFamilies = [
-                  "AF_INET"
-                  "AF_INET6"
-                ];
-              };
-
-              # Copy templates on activation
-              preStart = ''
-                if [ -d "${cfg.package}/templates" ]; then
-                  cp -r ${cfg.package}/templates/* /var/lib/vod2pod-rss/templates/ 2>/dev/null || true
-                fi
-              '';
-            };
-
-            # Ensure templates directory exists
-            systemd.tmpfiles.rules = [
-              "d /var/lib/vod2pod-rss 0755 vod2pod-rss vod2pod-rss -"
-              "d /var/lib/vod2pod-rss/templates 0755 vod2pod-rss vod2pod-rss -"
-            ];
-          };
-        };
-    };
+    );
 }

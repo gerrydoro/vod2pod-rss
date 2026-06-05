@@ -92,18 +92,23 @@ impl Transcoder {
             None
         };
 
-        // Build ffmpeg arguments
-        let mut ffmpeg_args = vec![
-            "-ss".to_string(),
-            ffmpeg_paramenters.seek_time.to_string(),
-            "-i".to_string(),
-            ffmpeg_paramenters.url.as_str().to_string(),
-        ];
+        // Build ffmpeg arguments using builder pattern (upstream style)
+        let mut command_ref = Command::new(&ffmpeg_path);
+
+        // Protocol whitelist for security (upstream fix)
+        command_ref.args([
+            "-ss",
+            ffmpeg_paramenters.seek_time.to_string().as_str(),
+            "-protocol_whitelist",
+            "file,http,https,tcp,tls",
+            "-i",
+            ffmpeg_paramenters.url.as_str(),
+        ]);
 
         // Determine if we can copy the stream directly (e.g., source is already Opus and target is Opus)
         // This avoids re-encoding errors like "Error parsing Opus packet header".
         let input_codec = probe(ffmpeg_paramenters.url.as_str());
-        let target_codec = ffmpeg_paramenters.audio_codec.get_ffmpeg_codec_str();
+        let _target_codec = ffmpeg_paramenters.audio_codec.get_ffmpeg_codec_str();
         if let Some(ref ic) = input_codec {
             // ffprobe returns codec names like "opus", "mp3", "aac" etc.
             // Map target codec names to ffprobe names for comparison.
@@ -113,53 +118,61 @@ impl Transcoder {
                 AudioCodec::OGGVorbis => "vorbis",
             };
             if ic.eq_ignore_ascii_case(target_name) {
-                // Use stream copy
-                ffmpeg_args.push("-c".to_string());
-                ffmpeg_args.push("copy".to_string());
+                // Use stream copy (fork feature)
+                command_ref.args(["-c", "copy"]);
             } else {
                 // Default re-encode path
-                ffmpeg_args.push("-acodec".to_string());
-                ffmpeg_args.push(target_codec.to_string());
-                ffmpeg_args.push("-ab".to_string());
-                ffmpeg_args.push(format!("{}k", ffmpeg_paramenters.bitrate_kbit));
+                command_ref.args([
+                    "-acodec",
+                    ffmpeg_paramenters.audio_codec.get_ffmpeg_codec_str(),
+                ]);
+                command_ref.args([
+                    "-ab",
+                    format!("{}k", ffmpeg_paramenters.bitrate_kbit).as_str(),
+                ]);
             }
         } else {
             // Default re-encode path if probe fails
-            ffmpeg_args.push("-acodec".to_string());
-            ffmpeg_args.push(target_codec.to_string());
-            ffmpeg_args.push("-ab".to_string());
-            ffmpeg_args.push(format!("{}k", ffmpeg_paramenters.bitrate_kbit));
+            command_ref.args([
+                "-acodec",
+                ffmpeg_paramenters.audio_codec.get_ffmpeg_codec_str(),
+            ]);
+            command_ref.args([
+                "-ab",
+                format!("{}k", ffmpeg_paramenters.bitrate_kbit).as_str(),
+            ]);
         }
 
         // Set output format based on codec (required for copy as well)
-        ffmpeg_args.push("-f".to_string());
-        ffmpeg_args.push(
-            ffmpeg_paramenters
-                .audio_codec
-                .get_extension_str()
-                .to_string(),
-        );
+        command_ref.args(["-f", ffmpeg_paramenters.audio_codec.get_extension_str()]);
+        command_ref.args([
+            "-bufsize",
+            (ffmpeg_paramenters.bitrate_kbit * 30).to_string().as_str(),
+        ]);
+        command_ref.args([
+            "-maxrate",
+            format!("{}k", ffmpeg_paramenters.max_rate_kbit).as_str(),
+        ]);
+        command_ref.args([
+            "-timeout",
+            ffmpeg_paramenters.timeout_in_seconds.to_string().as_str(),
+        ]);
+        command_ref.args(["-hide_banner"]);
+        command_ref.args(["-loglevel", "info"]);
+        // Use "-" for stdout (upstream fix - more reliable than pipe:stdout)
+        command_ref.arg("-");
 
-        ffmpeg_args.push("-bufsize".to_string());
-        ffmpeg_args.push(format!("{}k", ffmpeg_paramenters.bitrate_kbit * 30));
-        ffmpeg_args.push("-maxrate".to_string());
-        ffmpeg_args.push(format!("{}k", ffmpeg_paramenters.max_rate_kbit));
-        ffmpeg_args.push("-timeout".to_string());
-        ffmpeg_args.push(ffmpeg_paramenters.timeout_in_seconds.to_string());
-        ffmpeg_args.push("-hide_banner".to_string());
-        ffmpeg_args.push("-loglevel".to_string());
-        ffmpeg_args.push("info".to_string());
-        ffmpeg_args.push("pipe:1".to_string());
-
-        let mut command = Command::new(&ffmpeg_path);
-        command.args(&ffmpeg_args);
+        let args: Vec<String> = command_ref
+            .get_args()
+            .map(|x| x.to_string_lossy().to_string())
+            .collect();
 
         info!(
             "generated ffmpeg command:\n{} {}",
             ffmpeg_path,
-            ffmpeg_args.join(" ")
+            args.join(" ")
         );
-        command
+        command_ref
     }
 
     pub fn get_transcode_stream(
@@ -318,6 +331,11 @@ mod test {
                     info!("-ss {}", value);
                     assert_eq!(value, params.seek_time.to_string().as_str());
                 }
+                Some("-protocol_whitelist") => {
+                    let value = args.next().unwrap().to_str().unwrap();
+                    info!("-protocol_whitelist {}", value);
+                    assert_eq!(value, "file,http,https,tcp,tls");
+                }
                 Some("-i") => {
                     let value = args.next().unwrap().to_str().unwrap();
                     info!("-i {}", value);
@@ -345,8 +363,8 @@ mod test {
                     let value = args.next().unwrap().to_str().unwrap();
                     info!("-maxrate {}", value);
                 }
-                Some("pipe:stdout") => {
-                    info!("pipe:stdout");
+                Some("-") => {
+                    info!("-");
                 }
                 Some("pipe:1") => {
                     // Output to stdout via pipe
