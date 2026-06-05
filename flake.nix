@@ -149,6 +149,12 @@
             echo "==========================================="
           '';
         };
+
+        # NixOS module for system-wide installation
+        nixosModules.default = import ./nixosModules.nix;
       }
-    );
+    ) // {
+      # Export nixosModules at the top level for direct access
+      nixosModules = import ./nixosModules.nix;
+    };
 }
