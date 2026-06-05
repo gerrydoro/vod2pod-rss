@@ -133,6 +133,16 @@ docker compose pull && docker compose up -d
 
 ## Configuration
 
+### Environment
+- `VOD2POD_RSS_HOST`: Set the host address to bind to (default: "0.0.0.0")
+- `VOD2POD_RSS_PORT`: Set the port to listen on (default: "8080")
+- `TRANSCODE`: Set to "false" to disable transcoding, usefull if you only need the feeds (default: "true")
+- `MP3_BITRATE`: Set the bitrate of the trascoded stream to your client (default: "192")
+- `SUBFOLDER`: Set the the root path of the app, useful for reverse proxies (default: "/")
+- `VALID_URL_DOMAINS`: (optional) Set a comma separated list of domain urls that are allowed to be converted into RSS  (defaults to YouTube and Twitch urls)
+- `CACHE_TTL`: (optional) Set the time to live of the cache in seconds, default is 600 seconds (10 minutes)
+- `YOUTUBE_YT_DLP_GET_URL_EXTRA_ARGS`
+
 Environment variables (can be set in `.env` file or Docker compose):
 
 | Variable | Default | Description |
