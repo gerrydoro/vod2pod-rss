@@ -1,6 +1,4 @@
 #[allow(unused_imports)]
-use cached::proc_macro::io_cached;
-#[allow(unused_imports)]
 use cached::AsyncRedisCache;
 use feed_rs::model::Feed;
 use google_apis_common::auth::NoToken;
