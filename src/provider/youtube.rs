@@ -1,5 +1,3 @@
-#[allow(unused_imports)]
-use cached::AsyncRedisCache;
 use feed_rs::model::Feed;
 use google_apis_common::auth::NoToken;
 use google_youtube3::{api::{self, PlaylistItem}, hyper_rustls, YouTube};
@@ -464,18 +462,6 @@ fn get_youtube_hub() -> YouTube<hyper_rustls::HttpsConnector<hyper_util::client:
     YouTube::new(client, auth)
 }
 
-#[io_cached(
-    map_error = r##"|e| eyre::Error::new(e)"##,
-    ty = "AsyncRedisCache<Url, Url>",
-    create = r##" {
-        AsyncRedisCache::new("cached_yt_stream_url=", std::time::Duration::from_secs(18000))
-            .set_refresh(false)
-            .set_connection_string(&conf().get(ConfName::RedisUrl).unwrap())
-            .build()
-            .await
-            .expect("get_youtube_stream_url cache")
-} "##
-)]
 async fn get_youtube_stream_url(url: &Url) -> eyre::Result<Url> {
     debug!("getting stream_url for yt video: {}", url);
     let extra_args: Vec<String> =
@@ -597,21 +583,6 @@ async fn feed_url_for_yt_channel(url: &Url) -> eyre::Result<Url> {
     Ok(feed_url)
 }
 
-#[cfg_attr(
-    not(test),
-    io_cached(
-        map_error = r##"|e| eyre::Error::new(e)"##,
-        ty = "AsyncRedisCache<Url, Url>",
-        create = r##" {
-        AsyncRedisCache::new("youtube_channel_username_to_id=", std::time::Duration::from_secs(9999999))
-            .set_refresh(false)
-            .set_connection_string(&conf().get(ConfName::RedisUrl).unwrap())
-            .build()
-            .await
-            .expect("youtube_channel_username_to_id cache")
-} "##
-    )
-)]
 async fn find_yt_channel_url_with_c_id(url: &Url) -> eyre::Result<Url> {
     info!("conversion not in cache, using yt-dlp for conversion...");
     let output = Command::new("yt-dlp")
@@ -703,21 +674,6 @@ fn convert_atom_to_rss(feed: Feed, duration_map: HashMap<String, Option<usize>>)
     feed_builder.build().to_string()
 }
 
-#[cfg_attr(
-    not(test),
-    io_cached(
-        map_error = r##"|e| eyre::Error::new(e)"##,
-        ty = "AsyncRedisCache<Url, Option<usize>>",
-        create = r##" {
-        AsyncRedisCache::new("cached_yt_video_duration=", std::time::Duration::from_secs(86400))
-            .set_refresh(false)
-            .set_connection_string(&conf().get(ConfName::RedisUrl).unwrap())
-            .build()
-            .await
-            .expect("youtube_duration cache")
-} "##
-    )
-)]
 async fn get_youtube_video_duration_with_ytdlp(url: &Url) -> eyre::Result<Option<usize>> {
     debug!("getting duration for yt video: {}", url);
 
