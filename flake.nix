@@ -78,7 +78,7 @@
 
           # Cargo lock file for reproducible builds
           cargoLock = {
-            lockFile = "Cargo.lock";
+            lockFile = ./Cargo.lock;
           };
 
           # Disable tests in package build (they require API keys)
