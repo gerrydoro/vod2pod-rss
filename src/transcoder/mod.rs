@@ -108,7 +108,7 @@ impl Transcoder {
         // Determine if we can copy the stream directly (e.g., source is already Opus and target is Opus)
         // This avoids re-encoding errors like "Error parsing Opus packet header".
         let input_codec = probe(ffmpeg_paramenters.url.as_str());
-        let target_codec = ffmpeg_paramenters.audio_codec.get_ffmpeg_codec_str();
+        let _target_codec = ffmpeg_paramenters.audio_codec.get_ffmpeg_codec_str();
         if let Some(ref ic) = input_codec {
             // ffprobe returns codec names like "opus", "mp3", "aac" etc.
             // Map target codec names to ffprobe names for comparison.
