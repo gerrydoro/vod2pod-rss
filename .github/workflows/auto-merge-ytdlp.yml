@@ -13,7 +13,7 @@ permissions:
 
 jobs:
   auto-merge:
-    runs-on: [ ubuntu-latest ]
+    runs-on: [self-hosted, nixos, vod2pod]
     if: github.actor == 'dependabot[bot]'
     steps:
       - name: Checkout code
@@ -25,16 +25,15 @@ jobs:
           if git diff --name-only ${{ github.event.pull_request.base.sha }}..${{ github.event.pull_request.head.sha }} | grep -q "requirements.txt"; then
             if git diff ${{ github.event.pull_request.base.sha }}..${{ github.event.pull_request.head.sha }} -- requirements.txt | grep -q "yt-dlp"; then
               echo "is_ytdlp=true" >> $GITHUB_OUTPUT
-              echo "✓ Detected yt-dlp update"
+              echo "Detected yt-dlp update"
             fi
           fi
 
-      - name: Test yt-dlp version (optional safety check)
+      - name: Validate yt-dlp version
         if: steps.check.outputs.is_ytdlp == 'true'
         run: |
-          # Use nix to verify the yt-dlp version from requirements.txt
           nix shell nixpkgs#yt-dlp -c yt-dlp --version
-          echo "✓ yt-dlp version validated"
+          echo "yt-dlp version validated"
 
       - name: Enable auto-merge for yt-dlp
         if: steps.check.outputs.is_ytdlp == 'true'
@@ -46,6 +45,6 @@ jobs:
       - name: Comment on PR
         if: steps.check.outputs.is_ytdlp == 'true'
         run: |
-          gh pr comment "${{ github.event.pull_request.number }}" --body "🤖 Auto-merge enabled for yt-dlp update. PR will be merged automatically if CI passes."
+          gh pr comment "${{ github.event.pull_request.number }}" --body "Auto-merge enabled for yt-dlp update. PR will be merged automatically if CI passes."
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}

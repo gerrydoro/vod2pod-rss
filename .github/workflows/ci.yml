@@ -11,16 +11,10 @@ permissions:
   contents: read
 
 jobs:
-  build:
-    permissions:
-      contents: read
+  build-and-check:
     runs-on: [self-hosted, nixos, vod2pod]
-
     steps:
       - uses: actions/checkout@v6
 
-      - name: Build
-        run: nix build .#vod2pod-rss
-
-      - name: Test
-        run: nix flake check
+      - name: Build and run all flake checks (test, clippy, format, doctest)
+        run: nix flake check -L
