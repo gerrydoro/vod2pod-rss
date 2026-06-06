@@ -1,6 +1,7 @@
 {
   pkgs,
   runtimeDeps,
+  rustToolchain,
 }:
 
 pkgs.mkShell {
