@@ -102,7 +102,10 @@
         };
 
         # NixOS module (references external nix/nixosModules.nix)
-        nixosModules.default = import ./nix/nixosModules.nix;
+        nixosModules.default = import ./nix/nixosModules.nix {
+          inherit pkgs;
+          lib = pkgs.lib;
+        };
       }
     );
 }
