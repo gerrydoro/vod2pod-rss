@@ -14,7 +14,7 @@
       flake-utils,
       rust-overlay,
     }:
-    flake-utils.lib.eachDefaultSystem (
+    flake_utils.lib.eachDefaultSystem (
       system:
       let
         pkgs = import nixpkgs {
@@ -90,7 +90,7 @@
           vod2pod-rss = vod2pod-rss-pkg;
         };
 
-        apps.default = flake-utils.lib.mkApp {
+        apps.default = flake_utils.lib.mkApp {
           drv = vod2pod-rss-pkg;
           name = "vod2pod-rss";
         };
@@ -100,14 +100,14 @@
           inherit pkgs runtimeDeps;
           inherit rustToolchain;
         };
-
-        # NixOS module (references external nix/nixosModules.nix)
-        # The module is wrapped in an attribute set so that consumers can
-        # access inputs.vod2pod-rss.nixosModules.default as an attribute set
-        # with an 'imports' key containing the actual module.
-        nixosModules.default = {
-          imports = [ (import ./nix/nixosModules.nix) ];
-        };
       }
     );
+
+  # NixOS module (top-level, not per-system)
+  # The module is wrapped in an attribute set so that consumers can
+  # access inputs.vod2pod-rss.nixosModules.default as an attribute set
+  # with an 'imports' key containing the actual module.
+  nixosModules.default = {
+    imports = [ (import ./nix/nixosModules.nix) ];
+  };
 }
