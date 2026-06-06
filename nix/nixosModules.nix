@@ -1,4 +1,4 @@
-{
+self: {
   config,
   pkgs,
   lib,
@@ -19,8 +19,8 @@ in
 
     package = lib.mkOption {
       type = lib.types.package;
-      default = pkgs.vod2pod-rss;
-      defaultText = lib.literalExpression "pkgs.vod2pod-rss";
+      default = self.packages.${pkgs.stdenv.hostPlatform.system}.default;
+      defaultText = lib.literalExpression "self.packages.<system>.default";
       description = "The VoD2Pod-RSS package to use.";
     };
 
@@ -163,12 +163,10 @@ in
       vod2pod-rss = { };
     };
 
-    # Enable Redis if requested
-    services.redis = lib.mkIf cfg.redisService {
+    # Enable Redis if requested (using new API: servers.<name>.enable)
+    services.redis.servers.vod2pod = lib.mkIf cfg.redisService {
       enable = true;
-      servers.vod2pod = {
-        port = cfg.settings.redisPort;
-      };
+      port = cfg.settings.redisPort;
     };
 
     # VoD2Pod-RSS systemd service
@@ -181,6 +179,13 @@ in
       requires = lib.optional cfg.redisService "redis-vod2pod.service";
 
       wantedBy = [ "multi-user.target" ];
+
+      # Copy templates on activation (consolidated inside service block)
+      preStart = ''
+        if [ -d "${cfg.package}/templates" ]; then
+          cp -r ${cfg.package}/templates/* /var/lib/vod2pod-rss/templates/ 2>/dev/null || true
+        fi
+      '';
 
       serviceConfig = {
         Type = "simple";
@@ -209,7 +214,7 @@ in
         Environment = [
           "VOD2POD_RSS_HOST=${toString cfg.host}"
           "VOD2POD_RSS_PORT=${toString cfg.port}"
-          "PATH=${pkgs.ffmpeg}/bin:${pkgs.yt-dlp}/bin:${pkgs.deno}/bin:${pkgs.gnugrep}/bin:${pkgs.gnused}/bin:${pkgs.coreutils}/bin:/run/wrappers/bin"
+          "PATH=${pkgs.ffmpeg}/bin:${pkgs.yt-dlp}/bin:${pkgs.gnugrep}/bin:${pkgs.gnused}/bin:${pkgs.coreutils}/bin:/run/wrappers/bin"
           "TRANSCODE=${if cfg.settings.transcode then "true" else "false"}"
           "MP3_BITRATE=${toString cfg.settings.mp3Bitrate}"
           "SUBFOLDER=${cfg.settings.subfolder}"
@@ -233,13 +238,6 @@ in
       "d /var/lib/vod2pod-rss 0755 ${cfg.user} ${cfg.group} -"
       "d /var/lib/vod2pod-rss/templates 0755 ${cfg.user} ${cfg.group} -"
     ];
-
-    # Copy templates on activation
-    systemd.services.vod2pod-rss.preStart = ''
-      if [ -d "${cfg.package}/templates" ]; then
-        cp -r ${cfg.package}/templates/* /var/lib/vod2pod-rss/templates/ 2>/dev/null || true
-      fi
-    '';
 
     # Firewall
     networking.firewall.allowedTCPPorts = lib.mkIf config.networking.firewall.enable [ cfg.port ];

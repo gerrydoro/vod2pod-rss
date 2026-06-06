@@ -14,7 +14,7 @@
       flake-utils,
       rust-overlay,
     }:
-    flake-utils.lib.eachDefaultSystem (
+    (flake-utils.lib.eachDefaultSystem (
       system:
       let
         pkgs = import nixpkgs {
@@ -101,13 +101,9 @@
           inherit rustToolchain;
         };
       }
-    );
-
-  # NixOS module (top-level, not per-system)
-  # The module is wrapped in an attribute set so that consumers can
-  # access inputs.vod2pod-rss.nixosModules.default as an attribute set
-  # with an 'imports' key containing the actual module.
-  nixosModules.default = {
-    imports = [ (import ./nix/nixosModules.nix) ];
-  };
+    ))
+    // {
+      # NixOS module (non-system output, merged outside eachDefaultSystem)
+      nixosModules.default = import ./nix/nixosModules.nix self;
+    };
 }
