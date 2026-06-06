@@ -92,18 +92,19 @@ impl Transcoder {
             None
         };
 
-        // Build ffmpeg arguments using builder pattern (upstream style)
-        let mut command_ref = Command::new(&ffmpeg_path);
-
-        // Protocol whitelist for security (upstream fix)
-        command_ref.args([
-            "-ss",
-            ffmpeg_paramenters.seek_time.to_string().as_str(),
-            "-protocol_whitelist",
-            "file,http,https,tcp,tls",
-            "-i",
-            ffmpeg_paramenters.url.as_str(),
-        ]);
+        let seek_time_str = ffmpeg_paramenters.seek_time.to_string();
+        let mut command_ref = {
+            let mut c = Command::new(&ffmpeg_path);
+            c.args([
+                "-ss",
+                &seek_time_str,
+                "-protocol_whitelist",
+                "file,http,https,tcp,tls",
+                "-i",
+                ffmpeg_paramenters.url.as_str(),
+            ]);
+            c
+        };
 
         // Determine if we can copy the stream directly (e.g., source is already Opus and target is Opus)
         // This avoids re-encoding errors like "Error parsing Opus packet header".
