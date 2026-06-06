@@ -102,9 +102,11 @@
         };
 
         # NixOS module (references external nix/nixosModules.nix)
-        nixosModules.default = import ./nix/nixosModules.nix {
-          inherit pkgs;
-          lib = pkgs.lib;
+        # The module is wrapped in an attribute set so that consumers can
+        # access inputs.vod2pod-rss.nixosModules.default as an attribute set
+        # with an 'imports' key containing the actual module.
+        nixosModules.default = {
+          imports = [ (import ./nix/nixosModules.nix) ];
         };
       }
     );
