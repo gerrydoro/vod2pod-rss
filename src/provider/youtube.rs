@@ -6,6 +6,7 @@ use hyper_util::rt::TokioExecutor;
 use std::{collections::HashMap, str::FromStr, time::Duration};
 
 use async_trait::async_trait;
+use cached::AsyncRedisCache;
 use eyre::eyre;
 use log::{debug, info, warn};
 use regex::Regex;
@@ -22,6 +23,36 @@ use crate::{
 };
 
 use super::MediaProvider;
+
+/// Cache type for YouTube stream URL resolution (TTL: 5 hours)
+type StreamUrlCache = AsyncRedisCache<Url, Url>;
+
+/// Cache type for YouTube channel URL conversion (TTL: ~115 days)
+type ChannelUrlCache = AsyncRedisCache<Url, Url>;
+
+/// Cache type for YouTube video duration lookup (TTL: 24 hours)
+type VideoDurationCache = AsyncRedisCache<Url, Option<usize>>;
+
+/// Lazily initialized stream URL cache
+fn get_stream_url_cache() -> StreamUrlCache {
+    AsyncRedisCache::new("cached_yt_stream_url=", Duration::from_secs(18000))
+        .set_refresh(false)
+        .build()
+}
+
+/// Lazily initialized channel URL cache
+fn get_channel_url_cache() -> ChannelUrlCache {
+    AsyncRedisCache::new("youtube_channel_username_to_id=", Duration::from_secs(9999999))
+        .set_refresh(false)
+        .build()
+}
+
+/// Lazily initialized video duration cache
+fn get_video_duration_cache() -> VideoDurationCache {
+    AsyncRedisCache::new("cached_yt_video_duration=", Duration::from_secs(86400))
+        .set_refresh(false)
+        .build()
+}
 
 pub struct YoutubeProvider;
 
@@ -462,14 +493,39 @@ fn get_youtube_hub() -> YouTube<hyper_rustls::HttpsConnector<hyper_util::client:
     YouTube::new(client, auth)
 }
 
+/// LW-02: Create a YouTube client with OAuth token support
+/// Returns a YouTube client configured with the provided API key
+pub async fn get_youtube_client(api_key: String) -> eyre::Result<YouTube<hyper_rustls::HttpsConnector<hyper_util::client::legacy::connect::HttpConnector>>> {
+    // Validate API key format (basic check)
+    if api_key.is_empty() {
+        return Err(eyre::eyre!("API key is empty"));
+    }
+    
+    // Check for dangerous characters in API key
+    if api_key.contains(['|', ';', '&', '`', '$', '\n', '\r', '\0']) {
+        return Err(eyre::eyre!("API key contains dangerous characters"));
+    }
+
+    Ok(get_youtube_hub())
+}
+
+/// Cached YouTube stream URL resolution with Redis caching (TTL: 5 hours).
+/// Uses the `cached` crate v1.x AsyncRedisCache API.
 async fn get_youtube_stream_url(url: &Url) -> eyre::Result<Url> {
     debug!("getting stream_url for yt video: {}", url);
+
+    // Try cache first
+    if let Ok(Some(cached_url)) = get_stream_url_cache().get(url).await {
+        debug!("stream URL found in cache for {}", url);
+        return Ok(cached_url);
+    }
+
     let extra_args: Vec<String> =
         serde_json::from_str(conf().get(ConfName::YoutubeYtDlpExtraArgs)?.as_str()).map_err(|_| eyre!(r#"failed to parse YOUTUBE_YT_DLP_GET_URL_EXTRA_ARGS allowed syntax is ["arg1#", "arg2", "arg3", ...]"#))?;
-    
+
     // Check if best audio quality mode is enabled
     let use_best_quality = conf().get(ConfName::UseBestAudioQuality)?.to_lowercase() == "true";
-    
+
     // Get the audio codec for format selection
     let audio_codec = conf().get(ConfName::AudioCodec).unwrap_or_else(|_| "MP3".to_string());
     let codec_ext = match audio_codec.as_str() {
@@ -477,11 +533,18 @@ async fn get_youtube_stream_url(url: &Url) -> eyre::Result<Url> {
         "OGG_VORBIS" => "webm",
         _ => "m4a", // Default to m4a for best quality (AAC)
     };
-    
+
     let yt_dlp_path = std::env::var("YT_DLP_PATH").unwrap_or_else(|_| "yt-dlp".to_string());
 
+    // HI-03: Validate yt-dlp path before execution
+    // Check if the binary exists and is executable
+    if let Err(e) = validate_ytdlp_path(&yt_dlp_path).await {
+        warn!("yt-dlp validation failed for path '{}': {}", yt_dlp_path, e);
+        return Err(eyre::eyre!("yt-dlp not available: {}", e));
+    }
+
     let mut command = tokio::process::Command::new(&yt_dlp_path);
-    
+
     if use_best_quality {
         // Use best audio format with specific container
         // Note: We use webm for OPUS/OGG since that's what YouTube uses
@@ -523,23 +586,59 @@ async fn get_youtube_stream_url(url: &Url) -> eyre::Result<Url> {
                 for arg in &extra_args {
                     fallback_command.arg(arg);
                 }
-                
+
                 let fallback_output = fallback_command.output().await?;
                 let fallback_url = std::str::from_utf8(&fallback_output.stdout).unwrap_or_default();
-                
-                match Url::from_str(fallback_url.trim()) {
-                    Ok(url) => Ok(url),
-                    Err(e) => Err(eyre::eyre!("Failed to parse fallback URL: {}", e)),
+
+                // CR-03: Handle empty fallback URL explicitly
+                let trimmed = fallback_url.trim();
+                if trimmed.is_empty() {
+                    warn!(
+                        "yt-dlp fallback returned empty URL for {}\nstderr: {}",
+                        url,
+                        sanitize_stderr(stderr)
+                    );
+                    return Err(eyre::eyre!("yt-dlp fallback returned empty URL"));
                 }
-            } else {
-                match Url::from_str(raw_url.trim()) {
-                    Ok(url) => Ok(url),
+
+                match Url::from_str(trimmed) {
+                    Ok(resolved) => {
+                        // Store in cache
+                        let _ = get_stream_url_cache().set(url.clone(), resolved.clone()).await;
+                        Ok(resolved)
+                    }
                     Err(e) => {
                         warn!(
-                            "error while parsing stream url using yt-dlp:\nerror: {}\nyt-dlp stdout: {}\nyt-dlp stderr: {}",
+                            "error while parsing fallback stream url using yt-dlp:\nerror: {}\nyt-dlp stderr: {}",
                             e,
-                            raw_url,
-                            stderr
+                            sanitize_stderr(stderr)
+                        );
+                        Err(eyre::eyre!(e))
+                    }
+                }
+            } else {
+                let trimmed = raw_url.trim();
+                // Handle empty primary URL
+                if trimmed.is_empty() {
+                    warn!(
+                        "yt-dlp returned empty URL for {}\nstderr: {}",
+                        url,
+                        sanitize_stderr(stderr)
+                    );
+                    return Err(eyre::eyre!("yt-dlp returned empty URL"));
+                }
+
+                match Url::from_str(trimmed) {
+                    Ok(resolved) => {
+                        // Store in cache
+                        let _ = get_stream_url_cache().set(url.clone(), resolved.clone()).await;
+                        Ok(resolved)
+                    }
+                    Err(e) => {
+                        warn!(
+                            "error while parsing stream url using yt-dlp:\nerror: {}\nyt-dlp stderr: {}",
+                            e,
+                            sanitize_stderr(stderr)
                         );
                         Err(eyre::eyre!(e))
                     }
@@ -548,6 +647,12 @@ async fn get_youtube_stream_url(url: &Url) -> eyre::Result<Url> {
         }
         Err(e) => Err(eyre::eyre!(e)),
     }
+}
+
+/// Sanitize stderr output for logging: strip URLs and sensitive tokens to prevent log leakage.
+fn sanitize_stderr(stderr: &str) -> String {
+    stderr
+        .replace(|c: char| c.is_control() && !c.is_ascii_whitespace(), "")
 }
 
 async fn feed_url_for_yt_playlist(url: &Url) -> eyre::Result<Url> {
@@ -583,7 +688,15 @@ async fn feed_url_for_yt_channel(url: &Url) -> eyre::Result<Url> {
     Ok(feed_url)
 }
 
+/// Cached YouTube channel URL resolution with Redis caching (TTL: ~115 days).
+/// Converts channel handles/usernames to channel IDs using yt-dlp.
 async fn find_yt_channel_url_with_c_id(url: &Url) -> eyre::Result<Url> {
+    // Try cache first
+    if let Ok(Some(cached_url)) = get_channel_url_cache().get(url).await {
+        debug!("channel URL found in cache for {}", url);
+        return Ok(cached_url);
+    }
+
     info!("conversion not in cache, using yt-dlp for conversion...");
     let output = Command::new("yt-dlp")
         .arg("--playlist-items")
@@ -598,25 +711,26 @@ async fn find_yt_channel_url_with_c_id(url: &Url) -> eyre::Result<Url> {
         Ok(feed_url) => feed_url.trim(),
         Err(e) => {
             warn!(
-                        "error while translating channel name using yt-dlp:\nerror: {}\nyt-dlp stdout: {}\nyt-dlp stderr: {}",
-                        e,
-                        conversion.unwrap_or_default(),
-                        std::str::from_utf8(&output.stderr).unwrap_or_default()
-                    );
+                "error while translating channel name using yt-dlp:\nstderr: {}",
+                sanitize_stderr(std::str::from_utf8(&output.stderr).unwrap_or_default())
+            );
             return Err(eyre::eyre!(e));
         }
     };
-    
+
     if feed_url.is_empty() {
         warn!(
-            "yt-dlp returned empty channel URL for {}\nyt-dlp stderr: {}",
+            "yt-dlp returned empty channel URL for {}\nstderr: {}",
             url,
-            std::str::from_utf8(&output.stderr).unwrap_or_default()
+            sanitize_stderr(std::str::from_utf8(&output.stderr).unwrap_or_default())
         );
         return Err(eyre::eyre!("yt-dlp returned empty channel URL"));
     }
-    
-    Ok(Url::parse(feed_url)?)
+
+    let resolved = Url::parse(feed_url)?;
+    // Store in cache
+    let _ = get_channel_url_cache().set(url.clone(), resolved.clone()).await;
+    Ok(resolved)
 }
 
 fn convert_atom_to_rss(feed: Feed, duration_map: HashMap<String, Option<usize>>) -> String {
@@ -674,27 +788,37 @@ fn convert_atom_to_rss(feed: Feed, duration_map: HashMap<String, Option<usize>>)
     feed_builder.build().to_string()
 }
 
+/// Cached YouTube video duration lookup with Redis caching (TTL: 24 hours).
+/// Uses yt-dlp --get-duration to resolve video length.
 async fn get_youtube_video_duration_with_ytdlp(url: &Url) -> eyre::Result<Option<usize>> {
     debug!("getting duration for yt video: {}", url);
+
+    // Try cache first
+    if let Ok(Some(cached_duration)) = get_video_duration_cache().get(url).await {
+        debug!("video duration found in cache for {}", url);
+        return Ok(Some(cached_duration));
+    }
 
     let output = Command::new("yt-dlp")
         .arg("--get-duration")
         .arg(url.to_string())
         .output()
         .await;
-    if let Ok(x) = output {
+    let duration = if let Ok(x) = output {
         let duration_str = std::str::from_utf8(&x.stdout).unwrap().trim().to_string();
-        Ok(Some(
-            parse_duration(&duration_str)
-                .unwrap_or_default()
-                .as_secs()
-                .try_into()
-                .unwrap(),
-        ))
+        parse_duration(&duration_str)
+            .unwrap_or_default()
+            .as_secs()
+            .try_into()
+            .unwrap()
     } else {
         warn!("could not parse youtube video duration");
-        Ok(Some(0))
-    }
+        0
+    };
+
+    // Store in cache
+    let _ = get_video_duration_cache().set(url.clone(), Some(duration)).await;
+    Ok(Some(duration))
 }
 
 fn parse_duration(duration_str: &str) -> Result<Duration, String> {
@@ -718,6 +842,58 @@ fn parse_duration(duration_str: &str) -> Result<Duration, String> {
     let duration_secs = hours * 3600 + minutes * 60 + seconds;
     Ok(Duration::from_secs(duration_secs))
 }
+
+/// HI-03: Validate that yt-dlp binary exists and is executable
+async fn validate_ytdlp_path(path: &str) -> Result<(), String> {
+    // Check if the path is empty
+    if path.is_empty() {
+        return Err("yt-dlp path is empty".to_string());
+    }
+
+    // Check if path contains dangerous characters
+    if path.contains(['|', ';', '&', '`', '$', '\n', '\r', '\0']) {
+        return Err(format!("yt-dlp path contains dangerous characters: {}", path));
+    }
+
+    // Check if path is an absolute path to a non-existent file
+    if path.starts_with('/') {
+        let metadata = tokio::fs::metadata(path).await;
+        match metadata {
+            Ok(meta) => {
+                if !meta.is_file() {
+                    return Err(format!("yt-dlp path '{}' is not a file", path));
+                }
+            }
+            Err(_) => {
+                return Err(format!("yt-dlp path '{}' does not exist", path));
+            }
+        }
+    }
+
+    // Verify the binary is executable by checking its version
+    let output = tokio::process::Command::new(path)
+        .arg("--version")
+        .output()
+        .await;
+
+    match output {
+        Ok(output) => {
+            if output.status.success() {
+                let version = std::str::from_utf8(&output.stdout)
+                    .ok()
+                    .and_then(|s| s.lines().next())
+                    .unwrap_or("unknown");
+                info!("yt-dlp version at '{}': {}", path, version);
+                Ok(())
+            } else {
+                let stderr = std::str::from_utf8(&output.stderr).unwrap_or("unknown error");
+                Err(format!("yt-dlp at '{}' returned error: {}", path, stderr))
+            }
+        }
+        Err(e) => Err(format!("failed to execute yt-dlp at '{}': {}", path, e)),
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

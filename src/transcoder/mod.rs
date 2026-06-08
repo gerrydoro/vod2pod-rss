@@ -1,9 +1,10 @@
+use std::collections::HashMap;
 use std::error::Error;
 use std::io::Read;
 use std::process::Command;
 use std::process::Stdio;
 use std::thread::sleep;
-use std::time::Duration;
+use std::time::{Duration, Instant};
 
 use actix_web::web::Bytes;
 use futures::Future;
@@ -19,6 +20,71 @@ use tokio::sync::mpsc::Sender;
 use crate::configs::AudioCodec;
 use crate::provider;
 use crate::provider::MediaProvider;
+
+/// Cache entry for ffprobe codec results (TTL: 24 hours)
+#[derive(Clone, Debug)]
+struct ProbeCacheEntry {
+    codec: String,
+    cached_at: Instant,
+}
+
+impl ProbeCacheEntry {
+    fn is_expired(&self) -> bool {
+        self.cached_at.elapsed() > Duration::from_secs(86400)
+    }
+}
+
+/// Global ffprobe result cache (keyed by URL string)
+lazy_static::lazy_static! {
+    static ref PROBE_CACHE: std::sync::Mutex<HashMap<String, ProbeCacheEntry>> =
+        std::sync::Mutex::new(HashMap::new());
+}
+
+/// Probe audio codec with caching (TTL: 24 hours).
+/// Returns the codec name if ffprobe succeeds, None otherwise.
+fn probe_codec_cached(url: &str) -> Option<String> {
+    let mut cache = PROBE_CACHE.lock().unwrap();
+
+    // Check cache first
+    if let Some(entry) = cache.get(url) {
+        if !entry.is_expired() {
+            debug!("ffprobe cache hit for {}", url);
+            return Some(entry.codec.clone());
+        }
+    }
+
+    // ffprobe -v error -select_streams a:0 -show_entries stream=codec_name -of default=noprint_wrappers=1:nokey=1 <url>
+    let output = std::process::Command::new("ffprobe")
+        .args([
+            "-v",
+            "error",
+            "-select_streams",
+            "a:0",
+            "-show_entries",
+            "stream=codec_name",
+            "-of",
+            "default=noprint_wrappers=1:nokey=1",
+            url,
+        ])
+        .output()
+        .ok()?;
+
+    if output.status.success() {
+        let codec = String::from_utf8_lossy(&output.stdout).trim().to_string();
+        if !codec.is_empty() {
+            // Store in cache
+            cache.insert(
+                url.to_string(),
+                ProbeCacheEntry {
+                    codec: codec.clone(),
+                    cached_at: Instant::now(),
+                },
+            );
+            return Some(codec);
+        }
+    }
+    None
+}
 
 #[derive(Serialize)]
 pub struct FfmpegParameters {
@@ -66,32 +132,6 @@ impl Transcoder {
         debug!("generating ffmpeg command");
         let ffmpeg_path = std::env::var("FFMPEG_PATH").unwrap_or_else(|_| "ffmpeg".to_string());
 
-        // Helper closure to probe codec
-        let probe = |url: &str| -> Option<String> {
-            // ffprobe -v error -select_streams a:0 -show_entries stream=codec_name -of default=noprint_wrappers=1:nokey=1 <url>
-            let output = std::process::Command::new("ffprobe")
-                .args([
-                    "-v",
-                    "error",
-                    "-select_streams",
-                    "a:0",
-                    "-show_entries",
-                    "stream=codec_name",
-                    "-of",
-                    "default=noprint_wrappers=1:nokey=1",
-                    url,
-                ])
-                .output()
-                .ok()?;
-            if output.status.success() {
-                let codec = String::from_utf8_lossy(&output.stdout).trim().to_string();
-                if !codec.is_empty() {
-                    return Some(codec);
-                }
-            }
-            None
-        };
-
         let seek_time_str = ffmpeg_paramenters.seek_time.to_string();
         let mut command_ref = {
             let mut c = Command::new(&ffmpeg_path);
@@ -108,7 +148,8 @@ impl Transcoder {
 
         // Determine if we can copy the stream directly (e.g., source is already Opus and target is Opus)
         // This avoids re-encoding errors like "Error parsing Opus packet header".
-        let input_codec = probe(ffmpeg_paramenters.url.as_str());
+        // Uses cached ffprobe results (TTL: 24 hours) to minimize overhead.
+        let input_codec = probe_codec_cached(ffmpeg_paramenters.url.as_str());
         let _target_codec = ffmpeg_paramenters.audio_codec.get_ffmpeg_codec_str();
         if let Some(ref ic) = input_codec {
             // ffprobe returns codec names like "opus", "mp3", "aac" etc.
@@ -182,7 +223,7 @@ impl Transcoder {
         #[allow(clippy::zombie_processes)]
         async fn generetor_coroutine(
             mut command: Command,
-            _expected_bytes_count: usize,
+            expected_bytes_count: usize,
             co: Co<Result<Bytes, std::io::Error>>,
         ) {
             let mut child = command
@@ -222,17 +263,54 @@ impl Transcoder {
                 }
             });
 
-            //stdout thread - stream until ffmpeg completes
+            //stdout thread - stream with partial request support (CR-02)
             std::thread::spawn(move || {
                 const BUFFER_SIZE: usize = 1024;
                 let mut buff: [u8; BUFFER_SIZE] = [0; BUFFER_SIZE];
                 let mut tries = 0;
+                let mut sent_bytes_count: usize = 0;
                 loop {
                     match out.read(&mut buff) {
                         Ok(read_bytes) => {
+                            // CR-02: Handle partial requests by tracking sent bytes
+                            if sent_bytes_count + read_bytes > expected_bytes_count {
+                                // Partial request is fulfilled; send only remaining bytes
+                                let bytes_remaining = expected_bytes_count - sent_bytes_count;
+                                if bytes_remaining > 0 {
+                                    let _ = tx_stdout.blocking_send(Ok(Bytes::copy_from_slice(
+                                        &buff[..bytes_remaining],
+                                    )));
+                                }
+                                info!("transcoded requested partial range");
+                                _ = child.kill();
+                                _ = child.wait();
+                                break;
+                            }
+
                             if read_bytes == 0 {
                                 // EOF - ffmpeg completed successfully
                                 info!("transcoding completed");
+                                // Pad end of stream with zero bytes if client expects more
+                                const NULL_BUFF: [u8; BUFFER_SIZE] = [0; BUFFER_SIZE];
+                                if sent_bytes_count < expected_bytes_count {
+                                    debug!(
+                                        "sending {} bytes of padding",
+                                        expected_bytes_count - sent_bytes_count
+                                    );
+                                    while sent_bytes_count < expected_bytes_count {
+                                        let padding_bytes = expected_bytes_count - sent_bytes_count;
+                                        if padding_bytes >= BUFFER_SIZE {
+                                            let _ = tx_stdout
+                                                .blocking_send(Ok(Bytes::copy_from_slice(&NULL_BUFF)));
+                                            sent_bytes_count += BUFFER_SIZE;
+                                        } else {
+                                            let _ = tx_stdout.blocking_send(Ok(Bytes::copy_from_slice(
+                                                &NULL_BUFF[..padding_bytes],
+                                            )));
+                                            sent_bytes_count += padding_bytes;
+                                        }
+                                    }
+                                }
                                 _ = child.wait();
                                 break;
                             }
@@ -247,6 +325,7 @@ impl Transcoder {
                                 _ = child.wait();
                                 break;
                             };
+                            sent_bytes_count += read_bytes;
                             tries = 0; // reset tries on successful read
                         }
                         Err(e) => match e.kind() {

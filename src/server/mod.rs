@@ -41,6 +41,7 @@ pub fn spawn_server(listener: TcpListener) -> eyre::Result<Server> {
                     .route("transcodize_rss", web::get().to(transcodize_rss))
                     .route("transcodize_rss", web::head().to(transcodize_rss))
                     .route("health", web::get().to(health))
+                    .route("oauth_health", web::get().to(oauth_health_check))
                     .route("/", web::get().to(index))
                     .route("", web::get().to(index)),
             )
@@ -51,6 +52,57 @@ pub fn spawn_server(listener: TcpListener) -> eyre::Result<Server> {
 
 async fn health() -> HttpResponse {
     HttpResponse::Ok().finish()
+}
+
+/// LW-02: OAuth token health check endpoint for YouTube provider
+/// Returns 200 OK if OAuth token is valid, 503 if expired or missing
+async fn oauth_health_check() -> HttpResponse {
+    // Check if YouTube OAuth is configured
+    let youtube_api_key = match conf().get(ConfName::YoutubeApiKey) {
+        Ok(key) if !key.is_empty() => key,
+        _ => {
+            // No API key configured - not an error, just skip
+            return HttpResponse::Ok().json(serde_json::json!({
+                "status": "ok",
+                "oauth_configured": false
+            }));
+        }
+    };
+
+    // Attempt a minimal YouTube API call to verify token validity
+    // Using search.list with maxResults=1 is the cheapest valid call
+    let youtube = match crate::provider::youtube::get_youtube_client(youtube_api_key).await {
+        Ok(client) => client,
+        Err(_) => {
+            warn!("OAuth token validation failed");
+            return HttpResponse::ServiceUnavailable().json(serde_json::json!({
+                "status": "error",
+                "message": "OAuth token invalid or expired"
+            }));
+        }
+    };
+
+    // Perform a minimal API call to validate the token
+    match youtube.search()
+        .list(vec!["snippet"])
+        .q("health check")
+        .max_results(1)
+        .type_("video")
+        .do_all()
+        .await
+    {
+        Ok(_) => HttpResponse::Ok().json(serde_json::json!({
+            "status": "ok",
+            "oauth_configured": true
+        })),
+        Err(_) => {
+            warn!("OAuth token API call failed");
+            HttpResponse::ServiceUnavailable().json(serde_json::json!({
+                "status": "error",
+                "message": "OAuth token expired or invalid"
+            }))
+        }
+    }
 }
 
 async fn index(req: HttpRequest) -> HttpResponse {
@@ -89,6 +141,17 @@ async fn transcodize_rss(
 
     // Build transcode service URL using request connection info and configured subfolder path
     let subfolder = conf().get(ConfName::SubfolderPath).unwrap_or_else(|_| "/".to_string());
+    // MD-04: Validate subfolder path to prevent directory traversal
+    if subfolder.contains("..") || subfolder.contains('\0') {
+        error!("invalid subfolder path containing traversal sequences: {}", subfolder);
+        return HttpResponse::BadRequest().body("invalid configuration: subfolder path");
+    }
+    // Validate subfolder contains only safe characters
+    if !subfolder.is_empty() && !subfolder.chars().all(|c| c.is_alphanumeric() || c == '/' || c == '-' || c == '_' || c == '.') {
+        error!("subfolder path contains invalid characters: {}", subfolder);
+        return HttpResponse::BadRequest().body("invalid configuration: subfolder path");
+    }
+
     let conn_info = req.connection_info();
     // Validate scheme to prevent injection through X-Forwarded-Proto
     let scheme = match conn_info.scheme() {
@@ -264,13 +327,32 @@ async fn transcode_to_mp3(req: HttpRequest, query: web::Query<TranscodizeQuery>)
     let stream_url = &query.url;
     let bitrate = query.bitrate;
     let duration_secs = query.duration;
-    
-    // Validate URL for command injection
-    if stream_url.as_str().contains("|") || stream_url.as_str().contains(";") || stream_url.as_str().contains("&") || stream_url.as_str().contains("`") || stream_url.as_str().contains("$(") {
-        error!("URL contains potentially dangerous characters");
-        return HttpResponse::BadRequest().body("invalid URL");
+
+    // HI-02: URL injection validation using URL-decoded sanitization
+    // Check both raw and URL-decoded forms to catch encoded bypass attempts
+    let decoded_url = urlencoding::decode(stream_url.as_str()).unwrap_or_else(|_| stream_url.as_str().to_string());
+    let dangerous_patterns = ["|", ";", "&", "`", "$(", "$(", "||", "&&", "%0a", "%0A", "%26", "%7C", "%3B"];
+    let raw_str = stream_url.as_str();
+    let dec_str = decoded_url.as_str();
+    for pattern in &dangerous_patterns {
+        if raw_str.contains(pattern) || dec_str.contains(pattern) {
+            error!("URL contains potentially dangerous characters: {}", stream_url);
+            return HttpResponse::BadRequest().body("invalid URL");
+        }
     }
-    
+
+    // MD-03: Content-Length overflow check for very long videos
+    // Check: (duration_secs * bitrate * 1000) / 8 could overflow usize on 32-bit systems
+    const MAX_DURATION_SECS: usize = 10_000_000; // ~115 days
+    const MAX_BITRATE: usize = 999;
+    if duration_secs > MAX_DURATION_SECS || bitrate > MAX_BITRATE {
+        error!(
+            "Request exceeds maximum allowed duration ({}s) or bitrate ({}k): duration={}, bitrate={}",
+            MAX_DURATION_SECS, MAX_BITRATE, duration_secs, bitrate
+        );
+        return HttpResponse::BadRequest().body("request exceeds maximum allowed duration or bitrate");
+    }
+
     let total_streamable_bytes = (duration_secs * bitrate * 1000) / 8;
     info!("processing transcode at {bitrate}k for {stream_url}");
     
