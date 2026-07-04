@@ -7,7 +7,7 @@
 
 let
   cfg = config.services.vod2pod-rss;
-  audioCodecEnum = lib.enumFromList [
+  audioCodecEnum = lib.types.enum [
     "mp3"
     "opus"
     "oggVorbis"
@@ -152,14 +152,14 @@ in
   config = lib.mkIf cfg.enable (
     lib.mkMerge [
       {
-        services.redis = {
+        services.redis.servers.vod2pod-rss = {
           enable = true;
-          settings = {
-            save = "20 1";
-            loglevel = "warning";
-          };
           bind = cfg.redisAddress;
           port = cfg.redisPort;
+          settings = {
+            save = [ "20 1" ];
+            loglevel = lib.mkForce "warning";
+          };
         };
 
         networking.firewall.allowedTCPPorts = lib.mkIf cfg.openFirewall [ cfg.port ];
@@ -212,14 +212,12 @@ in
         };
 
         users.users.vod2pod-rss = lib.mkIf pkgs.stdenv.isLinux {
-          vod2pod-rss = {
-            description = "vod2pod-rss service user";
-            home = "/var/lib/vod2pod-rss";
-            createHome = true;
-            homeMode = "750";
-            isSystemUser = true;
-            group = "vod2pod-rss";
-          };
+          description = "vod2pod-rss service user";
+          home = "/var/lib/vod2pod-rss";
+          createHome = true;
+          homeMode = "750";
+          isSystemUser = true;
+          group = "vod2pod-rss";
         };
 
         users.groups.vod2pod-rss = lib.mkIf pkgs.stdenv.isLinux { };
