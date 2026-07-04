@@ -190,6 +190,6 @@
         }
       );
 
-      nixosModules.vod2pod-rss = ./nix/modules/vod2pod-rss.nix;
+      nixosModules.vod2pod-rss = import ./nix/modules/vod2pod-rss.nix self;
     };
 }

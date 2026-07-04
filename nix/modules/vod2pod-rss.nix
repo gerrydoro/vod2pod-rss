@@ -1,3 +1,4 @@
+self:
 {
   config,
   lib,
@@ -19,6 +20,7 @@ in
 
     package = lib.mkOption {
       type = lib.types.package;
+      default = self.packages.${pkgs.stdenv.hostPlatform.system}.default;
       defaultText = lib.literalMD "flake's package output";
       description = "The vod2pod-rss package to use.";
     };
