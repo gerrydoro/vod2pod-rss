@@ -209,20 +209,20 @@ in
             StateDirectory = "vod2pod-rss";
             ReadWritePaths = [ "/var/lib/vod2pod-rss" ];
           };
-
-          users.users = lib.mkIf pkgs.stdenv.isLinux {
-            vod2pod-rss = {
-              description = "vod2pod-rss service user";
-              home = "/var/lib/vod2pod-rss";
-              createHome = true;
-              homeMode = "750";
-              isSystemUser = true;
-              group = "vod2pod-rss";
-            };
-          };
-
-          users.groups.vod2pod-rss = lib.mkIf pkgs.stdenv.isLinux { };
         };
+
+        users.users.vod2pod-rss = lib.mkIf pkgs.stdenv.isLinux {
+          vod2pod-rss = {
+            description = "vod2pod-rss service user";
+            home = "/var/lib/vod2pod-rss";
+            createHome = true;
+            homeMode = "750";
+            isSystemUser = true;
+            group = "vod2pod-rss";
+          };
+        };
+
+        users.groups.vod2pod-rss = lib.mkIf pkgs.stdenv.isLinux { };
       }
     ]
   );
