@@ -56,19 +56,111 @@ nix develop              # enter dev shell (cargo, rust-analyzer, ffmpeg, yt-dlp
 nix build                # build release binary → result/bin/vod2pod
 ```
 
-To deploy as a NixOS service, add the flake module to your configuration:
+### NixOS Service Deployment
+
+Add the flake as an input to your NixOS configuration:
 
 ```nix
 { inputs.vod2pod-rss.url = "github:madiele/vod2pod-rss"; }
 ```
 
-Then enable the service in your NixOS config:
+Then enable and configure the service in your NixOS config:
 
 ```nix
-{ services.vod2pod-rss.enable = true; }
+{
+  imports = [ vod2pod-rss.nixosModules.vod2pod-rss ];
+
+  services.vod2pod-rss = {
+    enable = true;
+    port = 8080;
+    youtubeApiKey = "YOUR_API_KEY";
+    # ... see options below
+  };
+}
 ```
 
-See [AGENTS.md](AGENTS.md) for full Nix usage details.
+The module automatically provisions Redis (with persistence) and creates a dedicated `vod2pod-rss` system user.
+
+### Module Options Reference
+
+All options are under `services.vod2pod-rss`:
+
+| Option | Type | Default | Description |
+|---|---|---|---|
+| `enable` | bool | `false` | Enable the vod2pod-rss service |
+| `package` | package | flake output | The vod2pod-rss binary to run |
+| `host` | str | `"0.0.0.0"` | Host address to bind the web server to |
+| `port` | int | `8080` | Port to listen on (also opened in firewall) |
+| `transcode` | bool | `true` | Enable live ffmpeg transcoding to MP3 |
+| `mp3Bitrate` | int | `192` | Transcode bitrate in kbps (e.g., 128, 192, 320) |
+| `audioCodec` | enum | `"mp3"` | Audio codec: `mp3`, `opus`, or `oggVorbis` |
+| `subfolder` | str | `"/"` | URL path prefix for reverse proxies (e.g., `"/podcast"`) |
+| `validUrlDomains` | list of str | `[]` | Extra domains allowed for RSS conversion (YouTube/Twitch are always allowed) |
+| `cacheTTL` | int | `600` | Redis cache TTL in seconds (10 minutes) |
+| `ffmpegTimeoutSeconds` | int | `300` | Timeout for live transcoding sessions (5 minutes) |
+| `youtubeApiKey` | str or null | `null` | YouTube Data API v3 key (enables >15 items and channel avatar) |
+| `youtubeMaxResults` | int | `300` | Maximum YouTube items to fetch per channel/playlist |
+| `youtubeYtDlpExtraArgs` | str | `"[]"` | JSON array of extra yt-dlp arguments (e.g., `'["--proxy", "http://proxy:8080"]'`) |
+| `twitchClientId` | str or null | `null` | Twitch API client ID (from <https://dev.twitch.tv/console>) |
+| `twitchSecretKey` | str or null | `null` | Twitch API secret key (from <https://dev.twitch.tv/console>) |
+| `peertubeValidHosts` | list of str | `[]` | Allowed PeerTube instance domains (e.g., `["peertube.example.com"]`) |
+| `redisAddress` | str | `"localhost"` | Redis server address (when using external Redis) |
+| `redisPort` | int | `6379` | Redis server port (when using external Redis) |
+| `openFirewall` | bool | `true` | Open the configured port in the NixOS firewall |
+| `logLevel` | enum | `"INFO"` | Rust log level: `INFO`, `DEBUG`, `WARN`, or `ERROR` |
+| `timezone` | str or null | `null` | Timezone for log timestamps (e.g., `"America/New_York"`) |
+
+### Complete Example
+
+```nix
+{
+  inputs.vod2pod-rss.url = "github:madiele/vod2pod-rss";
+
+  services.vod2pod-rss = {
+    enable = true;
+    port = 80;
+    host = "127.0.0.1";  # behind a reverse proxy
+    subfolder = "/podcast";
+
+    youtubeApiKey = config.secrets.youtube_api_key;
+    twitchClientId = config.secrets.twitch_client_id;
+    twitchSecretKey = config.secrets.twitch_secret_key;
+
+    audioCodec = "mp3";
+    mp3Bitrate = 192;
+    cacheTTL = 1800;  # 30 minutes
+
+    validUrlDomains = [ "feeds.example.com" ];
+    peertubeValidHosts = [ "peertube.cpy.re" "video.example.com" ];
+
+    logLevel = "INFO";
+    timezone = "Europe/London";
+  };
+
+  secrets.youtube_api_key = { ... };
+  secrets.twitch_client_id = { ... };
+  secrets.twitch_secret_key = { ... };
+}
+```
+
+### Using a Specific Flake Version
+
+Pin to a specific commit, tag, or branch:
+
+```nix
+{ inputs.vod2pod-rss.url = "github:madiele/vod2pod-rss/stable"; }
+# Or a specific commit:
+{ inputs.vod2pod-rss.url = "github:madiele/vod2pod-rss/abc123"; }
+```
+
+### Updating the Service
+
+```bash
+nix flake update vod2pod-rss  # update to latest commit in your flake.lock
+nixos-rebuild switch          # apply the new configuration
+```
+
+See [AGENTS.md](AGENTS.md) for development commands (`nix develop`, `nix flake check`) and [CONTRIBUTING.md](CONTRIBUTING.md) for contributing guidelines.
 
 ## Docker
 - Install [Docker Compose](https://docs.docker.com/compose/install/)
