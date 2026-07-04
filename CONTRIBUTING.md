@@ -9,8 +9,22 @@ When adding a feature try to also add some test if possible.
 
 ## Pull Request Process
 
-All pull request should point to the main branch and should pass all tests (`make test`),
+All pull request should point to the main branch and should pass all tests (`nix flake check` or `make test`),
 you are allowed to edit the tests if they stop having a meaning after your changes.
+
+## Development Environments
+
+### Nix (recommended on NixOS)
+
+```bash
+nix develop              # enter dev shell (cargo, rust-analyzer, ffmpeg, yt-dlp, redis)
+nix build                # build release binary → result/bin/vod2pod
+nix flake check          # validate: builds package for x86_64 + aarch64
+```
+
+Regenerate `Cargo.lock` when dependencies change: `nix develop -c cargo update`.
+
+### Legacy (Makefile)
 
 ## How does it work?
 
@@ -55,7 +69,7 @@ you will still need to add your apikeys to the .dev.env file and run `make start
 
 ### local development setup
 
-#### Requirements
+#### Requirements (legacy)
 
 you need to meake sure those commands are installed on your machine
 
@@ -78,11 +92,11 @@ or
 
 ## General development commands
 
-### set enviroment variables
+### set enviroment variables (legacy)
 
 after launching the deps install script edit the `.env` file that was generated in the root folder with your api keys if needed (be sure to not commit your secrets accidentally)
 
-### launch required services (!!!REQUIRED!!!)
+### launch required services (!!!REQUIRED!!! - legacy only)
 
 run `make start-deps`
 
@@ -90,15 +104,15 @@ you need to run at least once at the start of your development session (in codes
 
 ### launch tests
 
-run `make test`
+run `nix flake check` (Nix, recommended) or `make test` (legacy)
 
 ### launch the server
 
-run `make run`
+run `nix develop -c cargo run` (Nix) or `make run` (legacy)
 
 ### automatically run the project when making changes
 
-run `make hot-reload`
+run `nix develop -c cargo watch -s "redis-cli flushdb && cargo run"` (Nix) or `make hot-reload` (legacy)
 
 ### build the container image locally
 
