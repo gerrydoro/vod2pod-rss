@@ -113,7 +113,7 @@
             # Copy templates and binary
             installPhase = ''
               mkdir -p $out/bin $out/templates
-              cp target/${target}/release/app $out/bin/vod2pod
+              cp target/${target}/release/app $out/bin/vod2pod-rss
               cp -r templates $out/
             '';
 
@@ -121,6 +121,7 @@
               description = "Converts YouTube, Twitch, and PeerTube channels into podcast RSS feeds";
               homepage = "https://github.com/madiele/vod2pod-rss";
               license = lib.licenses.mit;
+              mainProgram = "vod2pod-rss";
               platforms = [
                 "x86_64-linux"
                 "aarch64-linux"
