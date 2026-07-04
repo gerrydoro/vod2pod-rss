@@ -130,6 +130,34 @@
         }
       );
 
+      # Run checks with "nix flake check --no-build"
+      checks.x86_64-linux.vod2pod-rss-module-eval =
+        let
+          pkgs = pkgsFor "x86_64-linux";
+          eval = nixpkgs.lib.nixosSystem {
+            system = "x86_64-linux";
+            modules = [
+              self.nixosModules.vod2pod-rss
+              {
+                boot.isContainer = true;
+                fileSystems."/" = {
+                  device = "/dev/null";
+                  fsType = "ext4";
+                };
+                system.stateVersion = "26.05";
+
+                services.vod2pod-rss = {
+                  enable = true;
+                  package = pkgs.hello;
+                };
+              }
+            ];
+          };
+        in
+        pkgs.runCommand "vod2pod-rss-module-eval" { } ''
+          echo ${eval.config.system.build.toplevel.drvPath} > $out
+        '';
+
       devShells = forAllSystems (
         system:
         let
