@@ -175,7 +175,10 @@ in
           serviceConfig = {
             ExecStart = lib.getExe cfg.package;
             Restart = "on-failure";
-            Path = with pkgs; [ yt-dlp ffmpeg ];
+            Path = [
+              "${pkgs.yt-dlp}/bin"
+              "${pkgs.ffmpeg}/bin"
+            ];
             Environment = [
               "VOD2POD_RSS_HOST=${cfg.host}"
               "VOD2POD_RSS_PORT=${toString cfg.port}"
