@@ -34,7 +34,7 @@ impl ProbeCacheEntry {
     }
 }
 
-/// Global ffprobe result cache (keyed by URL string)
+// Global ffprobe result cache (keyed by URL string)
 lazy_static::lazy_static! {
     static ref PROBE_CACHE: std::sync::Mutex<HashMap<String, ProbeCacheEntry>> =
         std::sync::Mutex::new(HashMap::new());

@@ -68,7 +68,7 @@ pub fn inject_vod2pod_customizations(
 
                 // Calculate expected file size: bitrate is in kbit/s, so:
                 // size_bytes = (bitrate_kbit * 1000 * duration_secs) / 8
-                let size_bytes = (bitrate as u64 * 1000 * duration_secs) / 8;
+                let size_bytes = (bitrate * 1000 * duration_secs) / 8;
 
                 let enclosure = Enclosure {
                     length: size_bytes.to_string(),

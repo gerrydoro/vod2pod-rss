@@ -356,7 +356,7 @@ fn build_channel_items_from_playlist(
             let title = snippet.title.take().unwrap_or("".to_owned());
             let description = snippet.description.take().unwrap_or("".to_owned());
             let video_id = snippet.resource_id.take()?.video_id?;
-            let url = Url::parse(&format!("https://www.youtube.com/watch?v={}", &video_id)).ok()?;
+            let url = Url::parse(&format!("https://www.youtube.com/watch?v={}", video_id)).ok()?;
             let mut item_builder = ItemBuilder::default();
             item_builder.title(Some(title));
             item_builder.description(Some(description.clone()));
@@ -369,7 +369,7 @@ fn build_channel_items_from_playlist(
             );
             item_builder.author(snippet.channel_title.take());
             let video_infos = videos_infos.get(&video_id).or_else(|| {
-                warn!("no duration found for {:?}", &video_id);
+                warn!("no duration found for {:?}", video_id);
                 None
             })?;
             let itunes_item_extension = ITunesItemExtensionBuilder::default()
