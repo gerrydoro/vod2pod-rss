@@ -85,6 +85,12 @@ in
       description = "YouTube Data API v3 key (optional, limits feed to 15 items without it).";
     };
 
+    youtubeApiKeyFile = lib.mkOption {
+      type = lib.types.nullOr lib.types.path;
+      default = null;
+      description = "Path to a file containing the YouTube Data API v3 key. Mutually exclusive with youtubeApiKey.";
+    };
+
     twitchClientId = lib.mkOption {
       type = lib.types.nullOr lib.types.str;
       default = null;
@@ -195,6 +201,9 @@ in
             ]
             ++ lib.optionals (cfg.youtubeApiKey != null) [
               "YT_API_KEY=${cfg.youtubeApiKey}"
+            ]
+            ++ lib.optionals (cfg.youtubeApiKeyFile != null) [
+              "YT_API_KEY=$(cat ${cfg.youtubeApiKeyFile})"
             ]
             ++ lib.optionals (cfg.twitchClientId != null) [
               "TWITCH_CLIENT_ID=${cfg.twitchClientId}"
