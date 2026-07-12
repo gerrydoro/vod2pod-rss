@@ -99,6 +99,7 @@ All options are under `services.vod2pod-rss`:
 | `cacheTTL` | int | `600` | Redis cache TTL in seconds (10 minutes) |
 | `ffmpegTimeoutSeconds` | int | `300` | Timeout for live transcoding sessions (5 minutes) |
 | `youtubeApiKey` | str or null | `null` | YouTube Data API v3 key (enables >15 items and channel avatar) |
+| `youtubeApiKeyFile` | str or null | `null` | Path to file containing the YouTube Data API v3 key (alternative to `youtubeApiKey`, recommended for secrets management) |
 | `youtubeMaxResults` | int | `300` | Maximum YouTube items to fetch per channel/playlist |
 | `youtubeYtDlpExtraArgs` | str | `"[]"` | JSON array of extra yt-dlp arguments (e.g., `'["--proxy", "http://proxy:8080"]'`) |
 | `twitchClientId` | str or null | `null` | Twitch API client ID (from <https://dev.twitch.tv/console>) |
@@ -122,7 +123,11 @@ All options are under `services.vod2pod-rss`:
     host = "127.0.0.1";  # behind a reverse proxy
     subfolder = "/podcast";
 
-    youtubeApiKey = config.secrets.youtube_api_key;
+    # Use file-based API keys for secrets management (recommended)
+    youtubeApiKeyFile = config.sops.secrets.youtube-api-key.path;
+    # Or pass the key directly (not recommended for production):
+    # youtubeApiKey = "YOUR_API_KEY";
+
     twitchClientId = config.secrets.twitch_client_id;
     twitchSecretKey = config.secrets.twitch_secret_key;
 
@@ -137,7 +142,7 @@ All options are under `services.vod2pod-rss`:
     timezone = "Europe/London";
   };
 
-  secrets.youtube_api_key = { ... };
+  sops.secrets.youtube-api-key = { ... };
   secrets.twitch_client_id = { ... };
   secrets.twitch_secret_key = { ... };
 }
