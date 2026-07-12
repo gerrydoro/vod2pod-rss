@@ -1,4 +1,4 @@
-use std::{collections::HashMap, net::TcpListener, time::Instant};
+use std::{borrow::Cow, collections::HashMap, net::TcpListener, time::Instant};
 
 use actix_web::{
     dev::Server, guard, http, middleware, web, App, HttpRequest, HttpResponse, HttpServer,
@@ -84,11 +84,10 @@ async fn oauth_health_check() -> HttpResponse {
 
     // Perform a minimal API call to validate the token
     match youtube.search()
-        .list(vec!["snippet"])
+        .list(&vec!["snippet".into()])
         .q("health check")
         .max_results(1)
-        .type_("video")
-        .do_all()
+        .doit()
         .await
     {
         Ok(_) => HttpResponse::Ok().json(serde_json::json!({
@@ -330,12 +329,11 @@ async fn transcode_to_mp3(req: HttpRequest, query: web::Query<TranscodizeQuery>)
 
     // HI-02: URL injection validation using URL-decoded sanitization
     // Check both raw and URL-decoded forms to catch encoded bypass attempts
-    let decoded_url = urlencoding::decode(stream_url.as_str()).unwrap_or_else(|_| stream_url.as_str().to_string());
+    let decoded_url = urlencoding::decode(stream_url.as_str()).unwrap_or_else(|_| Cow::Owned(stream_url.as_str().to_string()));
     let dangerous_patterns = ["|", ";", "&", "`", "$(", "$(", "||", "&&", "%0a", "%0A", "%26", "%7C", "%3B"];
     let raw_str = stream_url.as_str();
-    let dec_str = decoded_url.as_str();
     for pattern in &dangerous_patterns {
-        if raw_str.contains(pattern) || dec_str.contains(pattern) {
+        if raw_str.contains(pattern) || decoded_url.contains(pattern) {
             error!("URL contains potentially dangerous characters: {}", stream_url);
             return HttpResponse::BadRequest().body("invalid URL");
         }

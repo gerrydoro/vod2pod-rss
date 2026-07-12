@@ -6,7 +6,7 @@ use hyper_util::rt::TokioExecutor;
 use std::{collections::HashMap, str::FromStr, time::Duration};
 
 use async_trait::async_trait;
-use cached::AsyncRedisCache;
+use cached::{AsyncRedisCache, ConcurrentCachedAsync};
 use eyre::eyre;
 use log::{debug, info, warn};
 use regex::Regex;
@@ -34,24 +34,30 @@ type ChannelUrlCache = AsyncRedisCache<Url, Url>;
 type VideoDurationCache = AsyncRedisCache<Url, Option<usize>>;
 
 /// Lazily initialized stream URL cache
-fn get_stream_url_cache() -> StreamUrlCache {
+async fn get_stream_url_cache() -> StreamUrlCache {
     AsyncRedisCache::new("cached_yt_stream_url=", Duration::from_secs(18000))
-        .set_refresh(false)
+        .refresh(false)
         .build()
+        .await
+        .unwrap()
 }
 
 /// Lazily initialized channel URL cache
-fn get_channel_url_cache() -> ChannelUrlCache {
+async fn get_channel_url_cache() -> ChannelUrlCache {
     AsyncRedisCache::new("youtube_channel_username_to_id=", Duration::from_secs(9999999))
-        .set_refresh(false)
+        .refresh(false)
         .build()
+        .await
+        .unwrap()
 }
 
 /// Lazily initialized video duration cache
-fn get_video_duration_cache() -> VideoDurationCache {
+async fn get_video_duration_cache() -> VideoDurationCache {
     AsyncRedisCache::new("cached_yt_video_duration=", Duration::from_secs(86400))
-        .set_refresh(false)
+        .refresh(false)
         .build()
+        .await
+        .unwrap()
 }
 
 pub struct YoutubeProvider;
@@ -515,7 +521,7 @@ async fn get_youtube_stream_url(url: &Url) -> eyre::Result<Url> {
     debug!("getting stream_url for yt video: {}", url);
 
     // Try cache first
-    if let Ok(Some(cached_url)) = get_stream_url_cache().get(url).await {
+    if let Ok(Some(cached_url)) = get_stream_url_cache().await.cache_get(url).await {
         debug!("stream URL found in cache for {}", url);
         return Ok(cached_url);
     }
@@ -604,7 +610,7 @@ async fn get_youtube_stream_url(url: &Url) -> eyre::Result<Url> {
                 match Url::from_str(trimmed) {
                     Ok(resolved) => {
                         // Store in cache
-                        let _ = get_stream_url_cache().set(url.clone(), resolved.clone()).await;
+                        let _ = get_stream_url_cache().await.cache_set(url.clone(), resolved.clone()).await;
                         Ok(resolved)
                     }
                     Err(e) => {
@@ -631,7 +637,7 @@ async fn get_youtube_stream_url(url: &Url) -> eyre::Result<Url> {
                 match Url::from_str(trimmed) {
                     Ok(resolved) => {
                         // Store in cache
-                        let _ = get_stream_url_cache().set(url.clone(), resolved.clone()).await;
+                        let _ = get_stream_url_cache().await.cache_set(url.clone(), resolved.clone()).await;
                         Ok(resolved)
                     }
                     Err(e) => {
@@ -692,7 +698,7 @@ async fn feed_url_for_yt_channel(url: &Url) -> eyre::Result<Url> {
 /// Converts channel handles/usernames to channel IDs using yt-dlp.
 async fn find_yt_channel_url_with_c_id(url: &Url) -> eyre::Result<Url> {
     // Try cache first
-    if let Ok(Some(cached_url)) = get_channel_url_cache().get(url).await {
+    if let Ok(Some(cached_url)) = get_channel_url_cache().await.cache_get(url).await {
         debug!("channel URL found in cache for {}", url);
         return Ok(cached_url);
     }
@@ -729,7 +735,7 @@ async fn find_yt_channel_url_with_c_id(url: &Url) -> eyre::Result<Url> {
 
     let resolved = Url::parse(feed_url)?;
     // Store in cache
-    let _ = get_channel_url_cache().set(url.clone(), resolved.clone()).await;
+    let _ = get_channel_url_cache().await.cache_set(url.clone(), resolved.clone()).await;
     Ok(resolved)
 }
 
@@ -794,9 +800,9 @@ async fn get_youtube_video_duration_with_ytdlp(url: &Url) -> eyre::Result<Option
     debug!("getting duration for yt video: {}", url);
 
     // Try cache first
-    if let Ok(Some(cached_duration)) = get_video_duration_cache().get(url).await {
+    if let Ok(Some(cached_duration)) = get_video_duration_cache().await.cache_get(url).await {
         debug!("video duration found in cache for {}", url);
-        return Ok(Some(cached_duration));
+        return Ok(cached_duration);
     }
 
     let output = Command::new("yt-dlp")
@@ -817,7 +823,7 @@ async fn get_youtube_video_duration_with_ytdlp(url: &Url) -> eyre::Result<Option
     };
 
     // Store in cache
-    let _ = get_video_duration_cache().set(url.clone(), Some(duration)).await;
+    let _ = get_video_duration_cache().await.cache_set(url.clone(), Some(duration)).await;
     Ok(Some(duration))
 }
 
