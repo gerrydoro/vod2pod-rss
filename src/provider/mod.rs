@@ -3,7 +3,7 @@ mod generic;
 mod macros;
 mod peertube;
 mod twitch;
-mod youtube;
+pub(crate) mod youtube;
 
 use async_trait::async_trait;
 use log::debug;
